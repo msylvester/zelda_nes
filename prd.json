@@ -1,0 +1,164 @@
+{
+  "project": "Legend of Zelda (NES) – TypeScript Rebuild",
+  "branchName": "ralph/zelda-nes-ts",
+  "description": "Create a local, browser-based TypeScript recreation of the original NES Legend of Zelda, architected so a final PRD can one-shot the full implementation.",
+  "goal": {
+    "ultimate": "Produce a final PRD capable of one-shot generation of a playable NES-accurate Legend of Zelda clone",
+    "constraints": [
+      "Local execution only",
+      "TypeScript",
+      "No copyrighted assets committed (assets generated or stubbed)",
+      "Faithful mechanics and structure"
+    ]
+  },
+  "context": {
+    "targetPlatform": "Browser (Canvas + Web Audio)",
+    "language": "TypeScript",
+    "architectureStyle": "Data-driven ECS-lite",
+    "rendering": "2D tile-based",
+    "input": "Keyboard (NES-style mapping)",
+    "referenceSystem": "NES Legend of Zelda (1986)"
+  },
+  "ralphLoopIntent": {
+    "loopType": "Progressive PRD refinement",
+    "outputArtifact": "Final one-shot PRD",
+    "evaluationCriteria": [
+      "Completeness",
+      "System boundaries clearly defined",
+      "All game mechanics specifiable without ambiguity",
+      "Minimal assumptions left to model inference"
+    ]
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Define core game systems",
+      "description": "As a system designer, I need all fundamental Zelda systems explicitly enumerated.",
+      "acceptanceCriteria": [
+        "Player movement and collision model defined",
+        "Combat system (sword, enemies, damage) defined",
+        "World navigation (screens, transitions) defined",
+        "Inventory and item usage defined",
+        "Health, death, and continue logic defined"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Define world and map representation",
+      "description": "As a designer, I need the overworld and dungeon structure specifiable as data.",
+      "acceptanceCriteria": [
+        "Tile grid dimensions defined",
+        "Screen adjacency rules defined",
+        "Overworld vs dungeon distinctions defined",
+        "Room metadata schema defined",
+        "Enemy spawn rules defined"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Define rendering and animation model",
+      "description": "As a developer, I need deterministic rendering rules matching NES behavior.",
+      "acceptanceCriteria": [
+        "Tile rendering order defined",
+        "Sprite layering rules defined",
+        "Animation frame timing defined",
+        "Camera behavior defined",
+        "HUD rendering defined"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Define input and control mapping",
+      "description": "As a player, controls must mirror NES Zelda.",
+      "acceptanceCriteria": [
+        "Directional movement defined",
+        "Primary / secondary item buttons defined",
+        "Pause/inventory screen defined",
+        "Input polling and buffering defined"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Define enemy and AI behavior system",
+      "description": "As a system, enemy behaviors must be data-driven and reproducible.",
+      "acceptanceCriteria": [
+        "Enemy archetype schema defined",
+        "Movement patterns defined",
+        "Attack patterns defined",
+        "Damage and knockback rules defined",
+        "Spawn and despawn rules defined"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Define progression and game state",
+      "description": "As a system, game progress must persist correctly.",
+      "acceptanceCriteria": [
+        "Save state schema defined",
+        "Inventory persistence defined",
+        "Dungeon completion flags defined",
+        "Game over and continue logic defined"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Define audio system",
+      "description": "As a player, audio should feel NES-authentic.",
+      "acceptanceCriteria": [
+        "Sound effect triggers defined",
+        "Music playback rules defined",
+        "Channel limitations approximated",
+        "Mute/pause behavior defined"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Define final one-shot PRD structure",
+      "description": "As a meta-system, I need a final PRD format that can generate the full game in one pass.",
+      "acceptanceCriteria": [
+        "All systems decomposed into deterministic specs",
+        "Explicit file/module layout defined",
+        "Explicit data schemas defined",
+        "Explicit runtime loop defined",
+        "No open-ended implementation decisions"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    }
+  ],
+  "outOfScope": [
+    "Multiplayer",
+    "Modern Zelda mechanics",
+    "High-resolution graphics",
+    "Third-party engines"
+  ],
+  "definitionOfDone": [
+    "Final PRD exists",
+    "Final PRD can generate a playable Zelda NES clone",
+    "Game boots, renders overworld, allows combat, and completes a dungeon",
+    "No human intervention required beyond asset substitution"
+  ]
+}
+
