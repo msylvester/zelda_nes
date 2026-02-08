@@ -10,4 +10,4 @@ export {
   type GeneratedAssets,
 } from './AssetGenerator';
 
-export { loadOracleSprites } from './gbc/GbcSpriteLoader';
+export { loadOracleSprites } from './gbc';

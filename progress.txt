@@ -6,6 +6,7 @@ Started: Sat Feb  7 19:04:52 CST 2026
 - Use `createCanvasWithContext(width, height)` pattern from AssetGenerator.ts for creating canvas elements
 - Asset sprites stored in `Map<string, HTMLCanvasElement>` via GeneratedAssets interface (widened from Map<SpriteKey,...> in SPRITE-006)
 - Barrel exports in `src/assets/index.ts` - extend when adding new modules
+- GBC module has its own barrel at `src/assets/gbc/index.ts` - import from `./gbc` not individual files
 - Quality checks: `npm run typecheck`, `npm run lint`, `npm run test`
 - Test files go in `tests/` directory mirroring `src/` structure
 - Vitest configured with `globals: true` - no need to import describe/it/expect
@@ -82,4 +83,17 @@ Started: Sat Feb  7 19:04:52 CST 2026
   - Fire-and-forget pattern: use `.then().catch()` instead of `void promise` to ensure errors are logged
   - Capture `this.assets` into a local `const assets` before the `.then()` closure to avoid stale `this` references
   - All 1911 existing tests continue to pass after type widening — no regressions
+---
+
+## 2026-02-07 19:35 CST - SPRITE-007
+- What was implemented: Module organization and polish — barrel exports, documentation, re-export cleanup
+- Files created:
+  - src/assets/gbc/index.ts - Barrel exports for all public APIs (GbcTileParser, GbcPalette, SpriteFrameComposer, SpriteTileMapping, GbcSpriteLoader)
+  - src/assets/gbc/CLAUDE.md - Module documentation covering GBC 2bpp format, module structure, how to add characters/frames, key patterns
+- Files changed:
+  - src/assets/index.ts - Updated loadOracleSprites re-export to use `./gbc` barrel instead of direct `./gbc/GbcSpriteLoader` import
+- **Learnings for future iterations:**
+  - When creating barrel exports, re-export types with `type` keyword for isolatedModules compatibility
+  - Update parent barrel imports to use the new sub-barrel (`./gbc`) rather than direct file paths
+  - All 1911 tests pass, typecheck and lint clean — no regressions from barrel/re-export changes
 ---
