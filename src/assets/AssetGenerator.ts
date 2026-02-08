@@ -167,7 +167,7 @@ export type TileKey =
 // ===== ASSET STORAGE =====
 
 export interface GeneratedAssets {
-  sprites: Map<SpriteKey, HTMLCanvasElement>;
+  sprites: Map<string, HTMLCanvasElement>;
   tiles: Map<TileKey, HTMLCanvasElement>;
   ready: boolean;
 }

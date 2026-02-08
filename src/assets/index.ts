@@ -9,3 +9,5 @@ export {
   type TileKey,
   type GeneratedAssets,
 } from './AssetGenerator';
+
+export { loadOracleSprites } from './gbc/GbcSpriteLoader';

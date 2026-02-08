@@ -25,6 +25,7 @@ import { getAudioManager } from './audio';
 
 // Asset generation
 import { generateGameAssets, type GeneratedAssets } from './assets/AssetGenerator';
+import { loadOracleSprites } from './assets/gbc/GbcSpriteLoader';
 
 // Rendering
 import { Renderer, type RenderFrame } from './rendering/Renderer';
@@ -149,6 +150,17 @@ class Game {
 
     // Generate placeholder assets
     this.assets = generateGameAssets();
+
+    // Load oracle sprites in background (fire-and-forget, no await)
+    const assets = this.assets;
+    loadOracleSprites().then((oracleSprites) => {
+      for (const [key, canvas] of oracleSprites) {
+        assets.sprites.set(key, canvas);
+      }
+      console.log(`Loaded ${oracleSprites.size} oracle sprites`);
+    }).catch((err) => {
+      console.warn('Failed to load oracle sprites:', err);
+    });
 
     // Initialize renderer
     this.renderer = new Renderer({

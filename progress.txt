@@ -4,7 +4,7 @@ Started: Sat Feb  7 19:04:52 CST 2026
 
 ## Codebase Patterns
 - Use `createCanvasWithContext(width, height)` pattern from AssetGenerator.ts for creating canvas elements
-- Asset sprites stored in `Map<SpriteKey, HTMLCanvasElement>` via GeneratedAssets interface
+- Asset sprites stored in `Map<string, HTMLCanvasElement>` via GeneratedAssets interface (widened from Map<SpriteKey,...> in SPRITE-006)
 - Barrel exports in `src/assets/index.ts` - extend when adding new modules
 - Quality checks: `npm run typecheck`, `npm run lint`, `npm run test`
 - Test files go in `tests/` directory mirroring `src/` structure
@@ -69,4 +69,17 @@ Started: Sat Feb  7 19:04:52 CST 2026
   - Mock `fetch` in tests via `vi.stubGlobal('fetch', vi.fn()...)` alongside the document mock
   - Use `buffer.slice(0)` in mock to give each call its own ArrayBuffer copy (avoids detached buffer issues)
   - CHARACTER_NAMES array defines the 9 characters; SPRITE_FRAME_MAP defines frames — total entries = 9 × frameCount
+---
+
+## 2026-02-07 19:32 CST - SPRITE-006
+- What was implemented: Integration of oracle sprites with the existing asset system
+- Files changed:
+  - src/assets/AssetGenerator.ts - Widened GeneratedAssets.sprites type from Map<SpriteKey,...> to Map<string,...>
+  - src/assets/index.ts - Added re-export of loadOracleSprites from gbc module
+  - src/main.ts - Added fire-and-forget loadOracleSprites() call after generateGameAssets(), merges into assets.sprites Map with console.log count
+- **Learnings for future iterations:**
+  - Widening Map<SpriteKey,...> to Map<string,...> is safe because SpriteRenderer already casts keys with `as SpriteKey`
+  - Fire-and-forget pattern: use `.then().catch()` instead of `void promise` to ensure errors are logged
+  - Capture `this.assets` into a local `const assets` before the `.then()` closure to avoid stale `this` references
+  - All 1911 existing tests continue to pass after type widening — no regressions
 ---
