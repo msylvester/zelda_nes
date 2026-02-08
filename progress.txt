@@ -11,6 +11,8 @@ Started: Sat Feb  7 19:04:52 CST 2026
 - Vitest configured with `globals: true` - no need to import describe/it/expect
 - ESLint configured to lint `src/` directory only
 - Mock DOM/canvas in tests using `vi.stubGlobal('document', ...)` and `vi.unstubAllGlobals()` in afterEach
+- Mock `fetch` in tests using `vi.stubGlobal('fetch', vi.fn()...)` — cleaned up by `vi.unstubAllGlobals()`
+- GBC sprite loader uses Promise.allSettled for graceful per-character error handling
 
 ## SPRITE-001 - Copy .bin files
 - Pre-existing: 9 .bin files already present in public/sprites/oracles/
@@ -54,4 +56,17 @@ Started: Sat Feb  7 19:04:52 CST 2026
   - Tile arrangement: [topLeft, topRight, bottomLeft, bottomRight] in 2x2 grid
   - SPRITE_FRAME_MAP maps frame names to 4 tile indices; walk frames use sequential tile indices starting from 0
   - Tests verify quadrant placement by checking specific pixel offsets: (py * 16 + px) * 4 for RGBA offset
+---
+
+## 2026-02-07 19:28 CST - SPRITE-005
+- What was implemented: Async sprite sheet loader that fetches .bin files, parses tiles, composes frames, and returns a Map of named canvases
+- Files created:
+  - src/assets/gbc/GbcSpriteLoader.ts - loadOracleSprites() async function using Promise.allSettled for parallel loading
+  - tests/assets/gbc/GbcSpriteLoader.test.ts - 7 tests for loading, key format, error handling
+- **Learnings for future iterations:**
+  - Use Promise.allSettled (not Promise.all) for graceful handling of individual fetch failures
+  - Map keys follow pattern: oracle_{charName}_{frameName} (e.g. oracle_ganondorf_walk_down_1)
+  - Mock `fetch` in tests via `vi.stubGlobal('fetch', vi.fn()...)` alongside the document mock
+  - Use `buffer.slice(0)` in mock to give each call its own ArrayBuffer copy (avoids detached buffer issues)
+  - CHARACTER_NAMES array defines the 9 characters; SPRITE_FRAME_MAP defines frames — total entries = 9 × frameCount
 ---
