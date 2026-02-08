@@ -42,3 +42,16 @@ Started: Sat Feb  7 19:04:52 CST 2026
   - GBC palette index 0 is always transparent (alpha=0), indices 1-3 are opaque (alpha=255)
   - `noUncheckedIndexedAccess` requires `as RGBA` cast when accessing palette tuple by computed index
 ---
+
+## 2026-02-07 19:21 CST - SPRITE-004
+- What was implemented: Sprite frame composer and tile mapping
+- Files created:
+  - src/assets/gbc/SpriteFrameComposer.ts - composeFrame() assembles 4 tiles in 2x2 grid into 16x16 canvas
+  - src/assets/gbc/SpriteTileMapping.ts - SPRITE_FRAME_MAP with 8 walk animation frames (4 directions x 2 frames)
+  - tests/assets/gbc/SpriteFrameComposer.test.ts - 13 tests for frame composition and tile mapping
+- **Learnings for future iterations:**
+  - composeFrame uses imageData approach (same as renderTileToCanvas) for pixel-level control on a 16x16 canvas
+  - Tile arrangement: [topLeft, topRight, bottomLeft, bottomRight] in 2x2 grid
+  - SPRITE_FRAME_MAP maps frame names to 4 tile indices; walk frames use sequential tile indices starting from 0
+  - Tests verify quadrant placement by checking specific pixel offsets: (py * 16 + px) * 4 for RGBA offset
+---
