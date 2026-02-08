@@ -1,3 +1,18 @@
 # Ralph Progress Log
-Started: Mon Feb  2 16:12:28 CST 2026
+Started: Sat Feb  7 19:04:52 CST 2026
+---
+
+## Codebase Patterns
+- Use `createCanvasWithContext(width, height)` pattern from AssetGenerator.ts for creating canvas elements
+- Asset sprites stored in `Map<SpriteKey, HTMLCanvasElement>` via GeneratedAssets interface
+- Barrel exports in `src/assets/index.ts` - extend when adding new modules
+- Quality checks: `npm run typecheck`, `npm run lint`, `npm run test`
+- Test files go in `tests/` directory mirroring `src/` structure
+- Vitest configured with `globals: true` - no need to import describe/it/expect
+- ESLint configured to lint `src/` directory only
+
+## SPRITE-001 - Copy .bin files
+- Pre-existing: 9 .bin files already present in public/sprites/oracles/
+- LICENSE file present
+- passes: true (pre-populated)
 ---
