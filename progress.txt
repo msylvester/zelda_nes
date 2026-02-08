@@ -16,3 +16,15 @@ Started: Sat Feb  7 19:04:52 CST 2026
 - LICENSE file present
 - passes: true (pre-populated)
 ---
+
+## 2026-02-07 19:12 CST - SPRITE-002
+- What was implemented: GBC 2bpp tile parser
+- Files created:
+  - src/assets/gbc/GbcTileParser.ts - decodeTile() and parseTileBuffer() functions
+  - tests/assets/gbc/GbcTileParser.test.ts - 14 tests for tile parsing
+- **Learnings for future iterations:**
+  - GBC 2bpp format: each tile is 16 bytes, 8 rows of 2 bytes. Bit (7-N) of byte0 = low bit, byte1 = high bit for pixel N
+  - Color indices: 0x00/0x00 → 0, 0xFF/0x00 → 1, 0x00/0xFF → 2, 0xFF/0xFF → 3
+  - 8928 bytes / 16 bytes per tile = 558 tiles per character sprite sheet
+  - TypeScript strict mode requires `as number` after array access on Uint8Array
+---

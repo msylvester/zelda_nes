@@ -50,7 +50,7 @@
         "npm run test passes"
       ],
       "priority": 2,
-      "passes": false
+      "passes": true
     },
     {
       "id": "SPRITE-003",
