@@ -10,6 +10,7 @@ Started: Sat Feb  7 19:04:52 CST 2026
 - Test files go in `tests/` directory mirroring `src/` structure
 - Vitest configured with `globals: true` - no need to import describe/it/expect
 - ESLint configured to lint `src/` directory only
+- Mock DOM/canvas in tests using `vi.stubGlobal('document', ...)` and `vi.unstubAllGlobals()` in afterEach
 
 ## SPRITE-001 - Copy .bin files
 - Pre-existing: 9 .bin files already present in public/sprites/oracles/
@@ -27,4 +28,17 @@ Started: Sat Feb  7 19:04:52 CST 2026
   - Color indices: 0x00/0x00 → 0, 0xFF/0x00 → 1, 0x00/0xFF → 2, 0xFF/0xFF → 3
   - 8928 bytes / 16 bytes per tile = 558 tiles per character sprite sheet
   - TypeScript strict mode requires `as number` after array access on Uint8Array
+---
+
+## 2026-02-07 19:18 CST - SPRITE-003
+- What was implemented: Color palette system with RGBA types, 3 palette presets, and renderTileToCanvas
+- Files created:
+  - src/assets/gbc/GbcPalette.ts - GbcPalette/RGBA types, DEFAULT/RED/BLUE palettes, renderTileToCanvas()
+  - tests/assets/gbc/GbcPalette.test.ts - 13 tests for palette definitions and canvas rendering
+- **Learnings for future iterations:**
+  - Vitest runs in Node (no jsdom/happy-dom), so canvas/document must be mocked via `vi.stubGlobal('document', ...)`
+  - Use `vi.stubGlobal` / `vi.unstubAllGlobals` pattern for DOM mocking in tests
+  - Canvas rendering uses `ctx.createImageData` + `ctx.putImageData` for pixel-level control (more efficient than fillRect per-pixel)
+  - GBC palette index 0 is always transparent (alpha=0), indices 1-3 are opaque (alpha=255)
+  - `noUncheckedIndexedAccess` requires `as RGBA` cast when accessing palette tuple by computed index
 ---
