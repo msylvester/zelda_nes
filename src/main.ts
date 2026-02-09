@@ -161,6 +161,7 @@ class Game {
         assets.sprites.set(key, canvas);
       }
       console.log(`Loaded ${oracleSprites.size} oracle sprites`);
+      this.showSpriteDebugPanel(oracleSprites);
     }).catch((err) => {
       console.warn('Failed to load oracle sprites:', err);
     });
@@ -2557,6 +2558,74 @@ class Game {
       'HEART_CONTAINER': 'HEART CONTAINER!',
     };
     return nameMap[itemType] ?? 'ITEM GET!';
+  }
+
+  /**
+   * Debug: renders loaded oracle sprites in a panel below the game canvas
+   * so you can visually verify the sprites at 4x magnification.
+   */
+  private showSpriteDebugPanel(sprites: Map<string, HTMLCanvasElement>): void {
+    // Only show the gameplay alias sprites (link, enemies) at 4x scale
+    const interestingPrefixes = ['link_walk_', 'link_attack_', 'octorok_', 'moblin_', 'keese_', 'tektite_', 'gel_', 'stalfos_'];
+    const filtered = [...sprites.entries()].filter(([key]) =>
+      interestingPrefixes.some(p => key.startsWith(p))
+    );
+
+    if (filtered.length === 0) {
+      console.warn('Sprite debug: no gameplay alias sprites found. Keys:', [...sprites.keys()].slice(0, 20));
+      return;
+    }
+
+    const scale = 4;
+    const padding = 4;
+    const labelHeight = 14;
+    const cellW = 16 * scale + padding;
+    const cellH = 16 * scale + padding + labelHeight;
+    const cols = Math.min(filtered.length, 8);
+    const rows = Math.ceil(filtered.length / cols);
+
+    const panel = document.createElement('canvas');
+    panel.width = cols * cellW + padding;
+    panel.height = rows * cellH + padding;
+    panel.style.cssText = 'display:block; margin:16px auto; background:#222; border:2px solid #0f0;';
+    panel.id = 'sprite-debug-panel';
+
+    const ctx = panel.getContext('2d');
+    if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, panel.width, panel.height);
+
+    filtered.forEach(([key, spriteCanvas], i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = padding + col * cellW;
+      const y = padding + row * cellH;
+
+      // Draw checkerboard background to show transparency
+      for (let cy = 0; cy < 16 * scale; cy += 4) {
+        for (let cx = 0; cx < 16 * scale; cx += 4) {
+          ctx.fillStyle = ((cx + cy) / 4) % 2 === 0 ? '#444' : '#555';
+          ctx.fillRect(x + cx, y + cy, 4, 4);
+        }
+      }
+
+      // Draw sprite at scale
+      ctx.drawImage(spriteCanvas, 0, 0, 16, 16, x, y, 16 * scale, 16 * scale);
+
+      // Label
+      ctx.fillStyle = '#0f0';
+      ctx.font = '10px monospace';
+      ctx.fillText(key, x, y + 16 * scale + 11);
+    });
+
+    // Remove existing panel if any
+    const existing = document.getElementById('sprite-debug-panel');
+    if (existing) existing.remove();
+
+    document.body.appendChild(panel);
+    console.log(`Sprite debug panel: showing ${filtered.length} gameplay sprites at ${scale}x`);
   }
 }
 
