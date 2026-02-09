@@ -11,3 +11,4 @@ export {
 } from './AssetGenerator';
 
 export { loadOracleSprites } from './gbc';
+export { loadNesLinkSprites } from './nes';

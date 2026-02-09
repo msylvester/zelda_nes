@@ -26,6 +26,7 @@ import { getAudioManager } from './audio';
 // Asset generation
 import { generateGameAssets, type GeneratedAssets } from './assets/AssetGenerator';
 import { loadOracleSprites } from './assets/gbc/GbcSpriteLoader';
+import { loadNesLinkSprites } from './assets/nes/NesSpriteSheetLoader';
 
 // Rendering
 import { Renderer, type RenderFrame } from './rendering/Renderer';
@@ -164,6 +165,20 @@ class Game {
       this.showSpriteDebugPanel(oracleSprites);
     }).catch((err) => {
       console.warn('Failed to load oracle sprites:', err);
+    });
+
+    // Load NES Link sprites in background (fire-and-forget, no await)
+    // Overwrites placeholders with pixel-accurate sprites from the sprite sheet PNG.
+    // Requires public/sprites/nes/link_spritesheet.png to be present.
+    loadNesLinkSprites().then((nesSprites) => {
+      for (const [key, canvas] of nesSprites) {
+        assets.sprites.set(key, canvas);
+      }
+      if (nesSprites.size > 0) {
+        console.log(`Loaded ${nesSprites.size} NES Link sprites`);
+      }
+    }).catch((err) => {
+      console.warn('Failed to load NES sprites:', err);
     });
 
     // Initialize renderer
