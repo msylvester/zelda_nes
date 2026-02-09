@@ -1,0 +1,177 @@
+# Ralph Progress Log
+Started: Mon Feb  2 16:12:28 CST 2026
+---
+
+## Codebase Patterns
+- Specs go in the `specs/` directory as markdown files, one per user story
+- PRD lives at `prd.json` — update `passes` and `notes` fields when a story is complete
+- All game measurements are in pixels, sub-pixels (1/16th), or half-hearts
+- NES resolution: 256x240, playable area: 256x176 (64px for HUD)
+- Tile grid: 16x16 pixels per tile
+- No build/test toolchain yet — quality checks are N/A for spec-only stories
+- TypeScript interfaces in specs use consistent naming: `PascalCase` for types, `camelCase` for fields
+- Tile data is stored in row-major flat arrays (index = row * 16 + col)
+- Door states in dungeons must be symmetric between connected rooms
+- All animation timings are defined in frames (1 frame = 1/60s at 60 FPS NTSC)
+- Sprite priority layers: 0 (ground items) through 7 (screen effects); Link is always priority 4
+- Canvas uses `imageSmoothingEnabled = false` for pixel-perfect NES rendering
+- NES sprite flicker (8 sprites/scanline limit) should be emulated for authenticity
+- Input uses `KeyboardEvent.code` for physical key location, not `KeyboardEvent.key`
+- Action buttons are edge-triggered (fire on key-down transition), not held/level-triggered
+- Input is polled once per frame at start of game loop; all systems read a frozen `InputSnapshot`
+- Game phase + player state together determine which inputs are accepted (two-level filtering)
+- Enemy behavior is fully data-driven via archetype objects — no per-enemy hardcoded logic
+- Movement patterns and attack patterns are separate concerns (enemies can move and attack on independent timers)
+- Bosses don't count toward the 6-enemy screen limit and are generally not knockbackable
+- Standard enemies have 0 invincibility frames after damage; bosses have 8 frames
+- Darknut shielding is directional — must compare attack direction vs enemy facing direction
+- PRNG for enemy behavior is seeded per-screen for reproducibility
+- Save state vs runtime state: only data that must survive session restarts goes in SaveFile; screen-local entities/positions are runtime-only
+- On continue/load, HP restores to 3 hearts (not max) — NES-accurate behavior
+- localStorage is the persistence backend; save data is JSON-serialized with a saveVersion field for migrations
+- Audio uses Web Audio API with OscillatorNode (pulse/triangle) and AudioBufferSourceNode (noise) to approximate NES APU
+- SFX always override music on shared channels; music resumes on that channel after SFX completes
+- AudioContext requires user gesture to resume (browser autoplay policy) — register one-shot listener on first interaction
+- Triangle channel has no volume control (on/off only) — matches NES hardware
+- Mute state is NOT persisted in save data; resets to unmuted on page load
+- Audio update runs once per frame after render in the game loop
+- The final one-shot PRD lives at specs/final-one-shot-prd.md and is the implementation reference
+- Implementation uses Vite + TypeScript strict + Vitest + ESLint (no other deps)
+- All assets are procedurally generated at runtime via AssetGenerator — no copyrighted files committed
+- Module structure: src/ with core/, input/, world/, entities/, combat/, rendering/, animation/, audio/, inventory/, progression/, screens/, data/, assets/, utils/
+- Game loop order per frame: input poll → phase transitions → entity updates → collision → damage → screen transition check → render → audio update
+
+---
+
+## 2026-02-02 - US-001
+- What was implemented: Complete specification for all core game systems including player movement/collision, combat, world navigation, inventory, and health/death/continue logic
+- Files changed:
+  - `specs/core-game-systems.md` (new) — full core systems spec
+  - `prd.json` — marked US-001 as passes: true
+- **Learnings for future iterations:**
+  - This PRD is about writing specs/design docs, not game code. Each user story = one spec document.
+  - NES Zelda uses a half-heart damage unit system — all damage and HP values should be in half-hearts for consistency across specs.
+  - The overworld is a 16x8 grid of 256x176 screens. Dungeons are separate 8x8 grids.
+  - Link's collision box is smaller than his sprite (8x8 at feet, not full 16x16) — this is critical for grid alignment behavior.
+  - Enemy drop tables cycle through groups A–D based on a global kill counter, not per-enemy randomness.
+---
+
+## 2026-02-02 - US-002
+- What was implemented: Complete specification for world and map representation including tile grids, screen adjacency, overworld/dungeon distinctions, room metadata schemas, enemy spawn rules, warp/transport systems, and cave room definitions
+- Files changed:
+  - `specs/world-and-map-representation.md` (new) — full world/map spec with TypeScript schemas
+  - `prd.json` — marked US-002 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - Tile data uses row-major flat arrays (176 entries per screen, index = row * 16 + col)
+  - Dungeon door states must be symmetric: if room A's east door is LOCKED, room B's west door must also be LOCKED
+  - There are 9 dungeons total. Dungeons 1-8 have Triforce fragments; dungeon 9 is Ganon's dungeon
+  - Bosses can repeat across dungeons (e.g., Aquamentus in dungeons 1 and 7)
+  - Cave rooms are distinct from dungeon rooms — they are single-screen interiors with their own schema
+  - Maximum 6 active enemies per screen/room; excess enemies queue and spawn as others die
+  - Zoras have special spawning rules (emerge from water tiles, don't count toward enemy limit)
+  - No build toolchain exists yet — no quality checks to run for spec-only stories
+---
+
+## 2026-02-02 - US-003
+- What was implemented: Complete specification for the rendering and animation model including tile rendering order, sprite layering rules, animation frame timing for all entities, camera behavior (screen-locked + transitions), HUD rendering layout, screen-level visual effects, and pause/inventory screen rendering
+- Files changed:
+  - `specs/rendering-and-animation.md` (new) — full rendering/animation spec with TypeScript schemas
+  - `prd.json` — marked US-003 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - NES Zelda camera is screen-locked — no smooth scrolling during gameplay, only during screen transitions
+  - Screen transitions differ by context: overworld uses 4px/frame scroll (64 frames horizontal, 44 vertical); dungeons use instant cut with 4-frame fades; cave entries use column-wipe effect (33 frames)
+  - Sprite priority is critical: Link (priority 4) and player weapons (5) are never subject to NES sprite flicker
+  - The HUD is 64px tall, always rendered on top, never affected by transitions
+  - Animation frames include optional hitbox activation data — sword hitbox is only active on frames 2-3 of the 4-frame attack animation
+  - Boss sprites are larger than standard 16x16 (up to 32x32) with multi-part compositions (Gleeok heads, Manhandla hands, Patra orbitals)
+  - Dark dungeon rooms hide both tiles AND enemy sprites; only Link is visible
+  - Heart display wraps to a second row at >8 containers, with 8 per row
+---
+
+## 2026-02-02 - US-004
+- What was implemented: Complete specification for input and control mapping including NES-to-keyboard mapping, directional movement with priority stack resolution, A/B button edge-triggered detection, pause/inventory screen controls, input polling architecture (once per frame), focus/blur handling, context-sensitive input acceptance matrix across all game phases, player state input locks, title screen input, input remapping support, and optional gamepad architecture
+- Files changed:
+  - `specs/input-and-control-mapping.md` (new) — full input/control mapping spec with TypeScript schemas
+  - `prd.json` — marked US-004 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - Use `KeyboardEvent.code` (physical key location), not `KeyboardEvent.key` (character output) for consistent behavior across keyboard layouts
+  - Direction priority uses a stack model — most recently pressed direction wins, releasing pops from stack to reveal previous direction
+  - Action buttons (A, B, Start) are edge-triggered (`justPressed`), not level-triggered (`held`) — matches NES behavior where holding a button doesn't auto-repeat
+  - Browser `keydown` events with `event.repeat === true` must be filtered out to avoid false re-triggers
+  - Must call `event.preventDefault()` on mapped keys to stop arrow keys from scrolling the page and Enter from submitting forms
+  - Focus/blur handling is critical: clear all held keys on blur to prevent "stuck key" bugs, auto-pause on blur to prevent gameplay while tabbed away
+  - Input acceptance varies by game phase (GAMEPLAY, PAUSE, TRANSITION, etc.) AND by player state within gameplay (IDLE, ATTACKING, KNOCKBACK, etc.) — two levels of input filtering
+  - Inventory cursor skips empty cells (uncollected items) and wraps at grid boundaries
+---
+
+## 2026-02-02 - US-005
+- What was implemented: Complete specification for the enemy and AI behavior system including enemy archetype schema (all stats, flags, vulnerabilities as a single data object), 10 movement pattern types (random walk, chase, hop, circular, emerge, stationary, dash, teleport, fly, track) with per-enemy parameter tables, 6 attack pattern types (projectile, boomerang, contact-only, breath, split, summon) with projectile stats and shield blocking rules, full damage/knockback rules for both directions (enemy→Link and Link→enemy) with vulnerability matrices and special cases, spawn/despawn lifecycle with queue processing, enemy state machine with transitions, and detailed boss-specific behavior specs for all 8 boss types (Aquamentus, Dodongo, Manhandla, Gleeok, Digdogger, Gohma, Patra, Ganon)
+- Files changed:
+  - `specs/enemy-and-ai-behavior.md` (new) — full enemy/AI behavior spec with TypeScript schemas
+  - `prd.json` — marked US-005 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - Enemy archetypes are self-contained data objects — all behavior is determined by the archetype fields, making the system fully data-driven
+  - Movement and attack patterns are independent systems that run on separate timers — an enemy can be moving while its attack cooldown ticks down
+  - Darknut's directional shielding requires comparing attack direction to enemy facing direction — this is a unique vulnerability mechanic not shared by other enemies
+  - Bosses have 8 frames of invincibility after each hit (unlike standard enemies with 0) to prevent damage stacking
+  - Dodongo is unique: sword-immune, must eat bombs placed in its path — requires special collision logic between bomb entities and the enemy
+  - Ganon is the only enemy that requires a specific weapon (Silver Arrow) for the killing blow — all other damage reduces HP but cannot deliver the final hit
+  - Zol splits into 2 Gels on death, Vire splits into 2 Keese — the `splitsOnDeath` flag and `splitInto` array handle this generically
+  - Shield blocking is weapon-type dependent: standard shield blocks ROCK and ARROW only; magical shield blocks all blockable projectile types
+  - Per-screen PRNG seeding ensures enemy behavior is reproducible within a session when revisiting screens
+---
+
+## 2026-02-02 - US-006
+- What was implemented: Complete specification for progression and game state including save file schema (3 slots, all persisted fields), inventory persistence with full Inventory interface and upgrade paths, per-dungeon completion flags (9 dungeons with boss/item/door/room state tracking), game over and continue logic (death sequence, continue screen, respawn points, state restoration rules), overworld persistent state (secrets, one-time items, shops), global progression flags (Triforce count, progression gates, Second Quest), game completion and Second Quest mechanics, save/load implementation (localStorage, file select screen, registration, elimination, validation/versioning), and runtime-only game state separation
+- Files changed:
+  - `specs/progression-and-game-state.md` (new) — full progression/game state spec with TypeScript schemas
+  - `prd.json` — marked US-006 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - Save state and runtime state are clearly separated — only persistent data goes in SaveFile; screen-local state (enemies, positions, transitions) is reconstructed on load
+  - On continue/load, HP always restores to 3 hearts (6 half-hearts), NOT max HP — this is a deliberate NES design choice that increases difficulty
+  - Overworld enemies always respawn; dungeon room respawn depends on boss-defeated and item-collected flags
+  - The NES original only allows saving on death (continue screen SAVE option); a pause-menu save is a QoL addition for the rebuild
+  - Second Quest is a fixed alternate data set, not procedural — separate map/dungeon layouts, different item locations, moved dungeon entrances
+  - Save data uses localStorage with JSON serialization; include a saveVersion field for forward-compatible migration
+  - Locked doors consume a key and stay open permanently; shutter doors reset unless the room is permanently cleared; bombable walls stay open permanently
+  - Kill counter (for item drop cycling) persists across saves — this is a subtle but important persistence detail
+  - Link starts with a standard shield but NO sword — first action is typically picking up the wooden sword from the cave
+---
+
+## 2026-02-02 - US-007
+- What was implemented: Complete specification for the audio system including NES APU architecture overview and Web Audio API mapping (pulse→OscillatorNode square, triangle→OscillatorNode triangle, noise→AudioBufferSourceNode), full sound effect trigger catalog (35+ SFX with channels, priorities, durations), SFX priority system with channel-level arbitration, music track catalog (10 tracks with context assignments, loop behavior, and channel usage), music transition rules between all game contexts, SFX-music channel sharing behavior (SFX overrides music temporarily per-channel), NES-accurate channel limitations (4 melodic channels, no polyphony per channel), volume envelope approximation, mute controls (global/music/SFX independent), pause/unpause audio behavior via AudioContext suspend/resume, focus/blur audio handling, Web Audio API bootstrap with user gesture requirement, audio data format schemas (SfxData, MusicData), tone generation parameters (pulse duty cycles, LFSR noise buffers), and runtime AudioManager API with frame-update integration
+- Files changed:
+  - `specs/audio-system.md` (new) — full audio system spec with TypeScript schemas
+  - `prd.json` — marked US-007 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - NES APU has 5 channels but Zelda only uses 4 (2 pulse, triangle, noise) — DMC is unused
+  - SFX and music share the same physical channels — SFX temporarily mutes the music on that channel, music position keeps advancing
+  - Web Audio API's AudioContext must be resumed via user gesture (click/keydown) before any audio plays — this is a browser autoplay policy, not optional
+  - Triangle channel on NES has NO volume envelope — it's either full volume or silent. This is a hardware constraint worth preserving for authenticity
+  - The low_health beep is a looping SFX, not a music track — it uses pulse2 at priority 4, which means it can be interrupted by most other SFX
+  - Pause suspends the AudioContext entirely (freezing all oscillators) rather than individually stopping each channel — much simpler and matches expected behavior
+  - Overworld music plays continuously across screen transitions (no restart); dungeon music restarts on dungeon entry but is continuous within
+  - Caves and shops are silent (no music) — this is a deliberate NES design choice, not an oversight
+  - Mute state is NOT saved — it resets on page load. This matches typical game behavior and avoids confusion
+---
+
+## 2026-02-02 - US-008
+- What was implemented: Complete final one-shot PRD structure at specs/final-one-shot-prd.md. The document covers: project overview and constraints, technology stack and build pipeline (Vite + TypeScript + Vitest), explicit file/module layout (~40 source files across 11 directories), full runtime game loop with fixed-timestep frame execution order, detailed module specifications for all 19 subsystems (entry point, game loop, input, game state, world/map, entities, player, enemies, combat/damage, collision, rendering, animation, HUD, screen transitions, audio, inventory/items, save/load, progression, menus), consolidated data schema definitions (all TypeScript interfaces in one place), data file specifications (overworld/dungeon/enemy/audio data), asset pipeline (procedural generation), cross-cutting concerns (error handling, debug, PRNG, constants), phased implementation order (25 phases with dependencies and verification), verification criteria checklist (30+ testable criteria), cross-reference table to all 7 source specs, and a decision log resolving all open-ended implementation decisions
+- Files changed:
+  - `specs/final-one-shot-prd.md` (new) — complete one-shot PRD document
+  - `prd.json` — marked US-008 as passes: true
+  - `progress.txt` — updated patterns and appended progress
+- **Learnings for future iterations:**
+  - The final PRD is a meta-document that references but does not duplicate the 7 source specs — it adds file layout, module boundaries, runtime loop, and implementation order on top
+  - Phased implementation order is critical for a one-shot PRD: each phase builds on the previous, with explicit dependencies and verification criteria
+  - Scoping is essential: fully implementing 128 overworld screens is unrealistic for one-shot, so the PRD explicitly scopes to ~9 screens + Dungeon 1 while providing stubs for the rest
+  - All "open-ended decisions" (bundler choice, asset approach, state management style, etc.) must be resolved in the PRD — an implementation agent cannot make architectural decisions
+  - Procedural asset generation at runtime avoids copyrighted asset issues and makes the project fully self-contained
+  - The consolidated types section in the PRD serves as both documentation and the actual `src/types.ts` content — single source of truth
+---

@@ -1,0 +1,1101 @@
+# Ralph Progress Log
+Started: Tue Feb  3 13:43:05 CST 2026
+---
+
+## Codebase Patterns
+- ESLint 9 uses flat config format with typescript-eslint package (not @typescript-eslint/eslint-plugin separately)
+- Vitest requires vitest.config.ts with `globals: true` for test files in tests/ directory
+- All config files (vite.config.ts, eslint.config.js, vitest.config.ts) should be at project root
+
+---
+
+## 2026-02-03 13:52 CST - IMPL-001
+- **What was implemented**: Project scaffolding and build pipeline
+- **Files created**:
+  - package.json with TypeScript, Vite, Vitest, ESLint dependencies
+  - tsconfig.json with strict mode, ES2022 target, bundler resolution
+  - vite.config.ts for dev server on port 3000
+  - vitest.config.ts for test configuration
+  - eslint.config.js with typescript-eslint strict rules
+  - index.html with canvas#game-canvas and NES-style CSS
+  - .gitignore for node_modules, dist, logs
+  - src/main.ts, src/constants.ts, src/types.ts (placeholders)
+  - tests/setup.test.ts (basic test)
+  - Directory structure: src/{core,input,world,entities,combat,rendering,animation,audio,inventory,progression,screens,data,assets,utils}
+- **Learnings for future iterations:**
+  - ESLint 9 requires typescript-eslint and @eslint/js packages (not @typescript-eslint/eslint-plugin)
+  - Vitest needs explicit config to find tests in tests/ directory
+  - All quality checks pass: typecheck, lint, test, dev server
+---
+
+## 2026-02-03 13:56 CST - IMPL-002
+- **What was implemented**: Constants and shared types
+- **Files changed**:
+  - src/constants.ts - All game constants from spec section 9 (screen dimensions, gameplay values, transitions, player, damage, items, etc.)
+  - src/types.ts - All TypeScript interfaces from spec section 6 (Direction, TileCollision, GamePhase, PlayerState, EnemyState, ButtonState, InputSnapshot, AABB, Entity, all enemy/movement/attack patterns, Inventory, SaveFile, etc.)
+- **Learnings for future iterations:**
+  - Types file is comprehensive (~750 lines) covering all game systems
+  - Movement patterns and attack patterns use discriminated union types (type field for pattern selection)
+  - EnemyBaseType includes both regular enemies and bosses
+  - ChasePattern has recursive idlePattern which allows for nested movement patterns
+  - All quality checks pass: typecheck, lint, test
+---
+
+## 2026-02-03 14:01 CST - IMPL-003
+- **What was implemented**: Utility functions for game development
+- **Files created**:
+  - src/utils/math.ts - clamp, lerp, aabbOverlap, distanceSquared, distance, snapToGrid, wrap
+  - src/utils/PRNG.ts - Deterministic seeded pseudo-random number generator using Linear Congruential Generator (LCG)
+  - src/utils/debug.ts - Debug overlay with hitbox visualization, grid display, FPS tracking, configurable logging
+  - src/utils/index.ts - Barrel export for all utils
+  - tests/utils/math.test.ts - 28 tests for math utilities
+  - tests/utils/PRNG.test.ts - 20 tests for PRNG
+  - tests/utils/debug.test.ts - 13 tests for debug utilities
+- **Learnings for future iterations:**
+  - JavaScript's Math.round(-0.5) = 0, not -1 (rounds toward zero for negative .5)
+  - Need to normalize -0 to 0 explicitly when it matters for comparisons
+  - PRNG uses MINSTD parameters (A=48271, M=2^31-1) for good distribution
+  - Debug overlay accessible from browser console via `window.__zeldaDebug`
+  - AABB overlap with zero-width/height boxes still counts as overlap if within bounds
+  - TypeScript strict mode requires explicit type assertions for array access patterns
+  - All quality checks pass: typecheck, lint, test (62 tests total)
+---
+
+## 2026-02-03 14:06 CST - IMPL-004
+- **What was implemented**: Input system with keyboard polling and direction stack
+- **Files created**:
+  - src/input/InputMapping.ts - NES button to keyboard key mapping (arrows/WASD, X/Period for A, Z/Comma for B, Enter for Start, ShiftRight for Select)
+  - src/input/DirectionStack.ts - Direction priority resolution using stack (most recently pressed direction wins)
+  - src/input/InputSystem.ts - Keyboard polling, edge-triggered button states (justPressed, justReleased, held), InputSnapshot generation
+  - src/input/index.ts - Barrel export for input module
+  - tests/input/DirectionStack.test.ts - 26 tests for direction stack
+  - tests/input/InputMapping.test.ts - 18 tests for input mapping utilities
+  - tests/input/InputSystem.test.ts - 29 tests for input system
+- **Learnings for future iterations:**
+  - InputSystem constructor accepts options object with `registerListeners: false` for testing (avoids "window is not defined" error in Node.js)
+  - The `typeof window !== 'undefined'` check enables browser-only event listener registration
+  - Direction stack uses filter to remove elements, which is cleaner than splice for this use case
+  - Use explicit undefined check instead of non-null assertion for TypeScript strict mode with array access
+  - All quality checks pass: typecheck, lint, test (135 tests total)
+---
+
+## 2026-02-03 14:11 CST - IMPL-005
+- **What was implemented**: Core game loop and state manager
+- **Files created**:
+  - src/core/GameStateManager.ts - GamePhase management with setPhase(), getPreviousPhase(), processPhaseTransitions() for pause toggle
+  - src/core/EventBus.ts - Simple pub/sub event bus with on(), onAny(), once(), emit(), off(), clear() methods
+  - src/core/GameLoop.ts - Fixed timestep game loop at 60 FPS with max 3 frame skip, accumulator-based timing
+  - src/core/index.ts - Barrel export for core module
+  - tests/core/GameStateManager.test.ts - 21 tests for game state management
+  - tests/core/EventBus.test.ts - 23 tests for event bus
+  - tests/core/GameLoop.test.ts - 19 tests for game loop timing
+- **Learnings for future iterations:**
+  - GameLoop accepts a GameLoopSystems interface and updateFn callback for flexibility
+  - manualTick() method useful for testing without RAF
+  - Frame counter only increments during GAMEPLAY phase (via isPlayable() check)
+  - When mocking RAF in tests, must also mock performance.now() for consistent timing
+  - EventBus uses Map<EventType, Set<EventHandler>> for type-safe event subscriptions
+  - gameEventBus singleton exported for global game event communication
+  - All quality checks pass: typecheck, lint, test (198 tests total)
+---
+
+## 2026-02-03 14:19 CST - IMPL-006
+- **What was implemented**: Asset generator for placeholder graphics
+- **Files created**:
+  - src/assets/AssetGenerator.ts - Procedural placeholder asset generation with createCanvasWithContext helper
+  - src/assets/index.ts - Barrel export for assets module
+  - tests/assets/AssetGenerator.test.ts - 41 tests for asset generation
+- **Assets generated**:
+  - Link sprites: walking (4 directions x 2 frames) + attacking (4 directions)
+  - Sword sprites: vertical/horizontal swords + sword beam
+  - Enemy sprites: Octorok (red/blue), Tektite, Moblin (red/blue), Keese, Aquamentus boss, death puff animation
+  - Projectile sprites: rock, fireball, boomerang
+  - Item sprites: heart, rupee (green/blue), bomb, key, fairy, triforce, heart container
+  - HUD sprites: hearts (full/half/empty), rupee/key/bomb icons, minimap (background/room/current)
+  - Tile sprites: grass, ground, water, rock, tree, bush, stairs, pit, wall, dungeon (floor/wall/block), doors (open/locked/shutter)
+- **Learnings for future iterations:**
+  - Use `createCanvasWithContext()` helper to avoid non-null assertions on canvas.getContext('2d')
+  - Case blocks with `const` declarations need braces to satisfy `no-case-declarations` lint rule
+  - Mock `document.createElement` in tests for Node.js environment (canvas API)
+  - SpriteKey and TileKey type unions provide type-safe access to generated assets
+  - PLACEHOLDER_COLORS constant keeps color palette consistent across all assets
+  - Singleton pattern via getAssetGenerator() ensures assets generated only once
+  - All quality checks pass: typecheck, lint, test (239 tests total)
+---
+
+## 2026-02-03 14:25 CST - IMPL-007
+- **What was implemented**: Basic rendering system
+- **Files created**:
+  - src/rendering/Renderer.ts - Main render pipeline orchestrator with clear(), render(), renderPlayArea() methods
+  - src/rendering/TileRenderer.ts - Renders background tiles with 64px HUD offset (16x11 grid, 256x176 pixels)
+  - src/rendering/SpriteRenderer.ts - Renders sprites sorted by priority (0-7), handles flipping
+  - src/rendering/EffectRenderer.ts - Screen flash/fade/wipe effects for transitions and damage
+  - src/rendering/index.ts - Barrel export for rendering module
+  - tests/rendering/Renderer.test.ts - 19 tests for main renderer
+  - tests/rendering/TileRenderer.test.ts - 14 tests for tile rendering
+  - tests/rendering/SpriteRenderer.test.ts - 22 tests for sprite rendering
+  - tests/rendering/EffectRenderer.test.ts - 34 tests for effect rendering
+- **Rendering features**:
+  - Canvas at 256x240 native with 3x CSS scale for pixelated rendering
+  - imageSmoothingEnabled = false for NES-style pixels
+  - TileRenderer maps tile IDs to tile assets with overworld/dungeon variants
+  - SpriteRenderer sorts by priority (low renders behind high), handles flipX/flipY
+  - EffectRenderer supports: flash, fade, damageFlash, columnWipe, rowWipe, irisWipe
+  - RenderFrame interface accepts tiles, sprites, scrollOffset, flashIntensity, fadeAlpha
+- **Learnings for future iterations:**
+  - Use `charAt()` instead of array indexing for strings in TypeScript strict mode
+  - Mock canvas context methods (drawImage, save, restore, translate, scale) for Node.js tests
+  - Renderer accepts GeneratedAssets and passes it to sub-renderers
+  - Sprite Y positions offset by HUD_HEIGHT (64px) automatically
+  - Fallback rendering draws colored rectangles when assets are missing
+  - All quality checks pass: typecheck, lint, test (328 tests total)
+---
+
+## 2026-02-03 14:31 CST - IMPL-008
+- **What was implemented**: World and tilemap system
+- **Files created**:
+  - src/world/TileMap.ts - TileMap class for managing screen tile data (load, getTileAt, getCollisionAt, getCollisionAtPixel)
+  - src/world/WorldManager.ts - WorldManager for screen navigation (loadScreen, checkScreenTransition, isTileSolid, checkCollision)
+  - src/world/TestScreenData.ts - Test screen data with tile IDs, collision mapping, and 3 test screens
+  - src/world/index.ts - Barrel export for world module
+  - tests/world/TileMap.test.ts - 36 tests for TileMap
+  - tests/world/WorldManager.test.ts - 42 tests for WorldManager
+  - tests/world/TestScreenData.test.ts - 26 tests for test screen data
+- **Features implemented**:
+  - TileMap: load/clear tile data, query by grid coords or pixel coords, getTileGrid for 2D access
+  - WorldManager: screen registration, loading, collision detection, screen transition detection
+  - Tile collision types: SOLID, PASSABLE, WATER, PIT, STAIRS, BUSH, ROCK
+  - Screen dimensions: 16x11 tiles (256x176 pixels), matching spec
+  - Test screens with mixed terrain: grass, trees, water, rocks, bushes, stairs, pits
+  - Static helpers: pixelToTile, tileToPixel for coordinate conversion
+- **Learnings for future iterations:**
+  - Screen transition uses hitbox center point, not edge (centerX < 0 triggers left transition)
+  - isTileSolid() returns true for SOLID, WATER, PIT (blocks movement); false for PASSABLE, STAIRS, BUSH, ROCK
+  - ROCK collision type is for pushable blocks (not solid), similar to original Zelda
+  - Test hitbox positions must have center actually crossing boundary (x=-8 with width=8 gives center=-4)
+  - WorldManager uses Map<string, WorldScreenData> with "col,row" key format for screen storage
+  - All quality checks pass: typecheck, lint, test (432 tests total)
+---
+
+## 2026-02-03 14:37 CST - IMPL-009
+- **What was implemented**: Screen data (overworld stub)
+- **Files created**:
+  - src/data/overworldData.ts - Overworld screen data with 16x8 grid structure (128 screen slots)
+  - src/data/index.ts - Barrel export for data module
+  - tests/data/overworldData.test.ts - 35 tests for overworld data
+- **Features implemented**:
+  - Starting screen (7,7) with walkable center, water pond, cave entrance, enemy spawns
+  - 8 fully defined screens: 7,7 (start), 8,7 (east), 6,7 (west), 7,6 (north), 8,6 (NE), 6,6 (NW), 9,7 (dungeon entrance), 5,7 (mountains)
+  - Each screen has tile IDs, collision types, enemy spawns, entrances, hidden items
+  - Remaining 120 screens stubbed as blocked (all rocks)
+  - Helper functions: getOverworldScreen, isScreenDefined, getDefinedScreenCoords, getStartingScreen, getAdjacentScreens
+- **Learnings for future iterations:**
+  - Re-export TILE_IDS, TILE_COLLISION_MAP, makeTile from TestScreenData for consistency
+  - Use explicit Number() conversion instead of destructuring with map(Number) for TypeScript strict mode
+  - Screen borders use trees/rocks on edges, with openings where exits should be (e.g., grass on left column for west exit)
+  - OverworldScreen type includes screenType field ('NORMAL', 'DUNGEON_ENTRANCE', etc.) for special behavior
+  - Enemy archetypeIds follow pattern: ENEMY_COLOR (e.g., 'OCTOROK_RED', 'TEKTITE_BLUE')
+  - All quality checks pass: typecheck, lint, test (467 tests total)
+---
+
+## 2026-02-03 14:41 CST - IMPL-010
+- **What was implemented**: Entity system base
+- **Files created**:
+  - src/entities/Entity.ts - Base entity interfaces and types (GameEntity, EnemyEntity, ProjectileEntity, ItemEntity, EffectEntity)
+  - src/entities/EntityManager.ts - Entity lifecycle management with spawn/update/clear methods
+  - src/entities/index.ts - Barrel export for entities module
+  - tests/entities/Entity.test.ts - 32 tests for entity types
+  - tests/entities/EntityManager.test.ts - 46 tests for entity manager
+- **Features implemented**:
+  - GameEntity base interface extending Entity from types.ts
+  - Specialized interfaces: EnemyEntity (combat), ProjectileEntity (damage source), ItemEntity (collectibles), EffectEntity (particles)
+  - BaseEntity abstract class with common functionality (applyVelocity, createSpriteCommand)
+  - Type guards: isEnemy, isProjectile, isItem, isEffect
+  - Entity ID generation with resetEntityIdCounter for testing
+  - EntityManager with factory registration pattern
+  - Spawn queue with frame-based delays for deferred spawns
+  - MAX_ENEMIES_PER_SCREEN enforcement in spawnEnemy
+  - Automatic inactive entity cleanup in update loop
+  - Query methods: getActiveEnemyCount, getKillCounterEnemyCount, isRoomCleared
+  - getSpriteCommands() collects and sorts by priority for rendering
+  - Singleton pattern via getEntityManager()/resetEntityManager()
+- **Learnings for future iterations:**
+  - Use factory registration pattern for entity creation to allow different implementations
+  - Entity active flag controls both update calls and removal on next update cycle
+  - countsTowardLimit vs advancesKillCounter allows different enemy categories (decorative vs required)
+  - Spawn queue delay is decremented each frame, spawns when <= 0
+  - Type guards enable safe casting with TypeScript's narrowing
+  - All quality checks pass: typecheck, lint, test (545 tests total)
+---
+
+## 2026-02-03 14:46 CST - IMPL-011
+- **What was implemented**: Player (Link) implementation
+- **Files created**:
+  - src/entities/Player.ts - Full player entity with state machine and movement
+  - tests/entities/Player.test.ts - 66 tests for player behavior
+- **Features implemented**:
+  - PlayerState machine: IDLE, WALKING, ATTACKING, KNOCKBACK, INVINCIBLE, DYING
+  - Sub-pixel movement tracking (subPixelX/Y at SUBPIXEL_SCALE=16)
+  - Movement at 1.5 pixels/frame (PLAYER_SPEED_SUBPIXELS=24)
+  - 8-pixel grid snap on perpendicular axis (e.g., snap Y when moving horizontally)
+  - 8x8 collision hitbox at feet (PLAYER_HITBOX_OFFSET_X=4, PLAYER_HITBOX_OFFSET_Y=8)
+  - TileCollisionChecker injectable for collision detection
+  - Knockback: opposite direction, 16 pixels over 16 frames, then invincibility
+  - Invincibility: 60 frames with 4-frame flash interval
+  - Walk animation: 2 frames cycling at 8 frames per animation frame
+  - Death animation: 80 frames then deactivate
+  - Sprite key selection based on state and direction
+  - Singleton pattern via getPlayer()/resetPlayer()
+- **Learnings for future iterations:**
+  - Sub-pixel position must be updated alongside pixel position (setPosition updates both)
+  - Grid snap uses snapToGrid utility from math.ts on perpendicular axis only
+  - Collision checker receives the prospective hitbox, returns true to block movement
+  - handleInput returns early for non-actionable states (KNOCKBACK, DYING, ATTACKING)
+  - Animation frame cycles 0->1->0 with timer reset at WALK_ANIMATION_SPEED
+  - Invincibility flashing uses flashTimer incremented during invincibility period
+  - Player extends BaseEntity but overrides getHitbox() for feet hitbox
+  - All quality checks pass: typecheck, lint, test (611 tests total)
+---
+
+## 2026-02-03 14:49 CST - IMPL-012
+- **What was implemented**: Player combat (sword attack)
+- **Files changed**:
+  - src/entities/Player.ts - Added sword attack functionality
+  - tests/entities/Player.test.ts - Added 12 tests for sword attack
+- **Features implemented**:
+  - attackFrame property tracks current frame of attack animation
+  - startAttack() now defaults to ATTACK_FRAMES (12) if no duration specified
+  - getSwordHitbox() returns AABB during active frames (2-8), null otherwise
+  - Sword hitbox sizes: 16x8 for horizontal (LEFT/RIGHT), 8x16 for vertical (UP/DOWN)
+  - Sword positioned adjacent to Link based on facing direction
+  - isSwordActive() convenience method wraps getSwordHitbox() null check
+  - getAttackFrame() for external queries
+  - attackFrame resets to 0 when attack ends or player resets
+- **Learnings for future iterations:**
+  - Sword hitbox uses constants SWORD_HITBOX_HORIZONTAL_WIDTH/HEIGHT and SWORD_HITBOX_VERTICAL_WIDTH/HEIGHT
+  - Active frames defined by SWORD_HITBOX_ACTIVE_START (2) and SWORD_HITBOX_ACTIVE_END (8)
+  - Sword is positioned relative to sprite center for consistent feel
+  - Player cannot move during ATTACKING state (already enforced in handleInput)
+  - All quality checks pass: typecheck, lint, test (623 tests total)
+---
+
+## 2026-02-03 14:53 CST - IMPL-013
+- **What was implemented**: Collision detection system
+- **Files created**:
+  - src/combat/CollisionDetection.ts - Collision detection system
+  - src/combat/index.ts - Barrel export for combat module
+  - tests/combat/CollisionDetection.test.ts - 36 tests for collision detection
+- **Features implemented**:
+  - checkPlayerEnemyCollisions() detects player touching enemies, returns damage and direction
+  - checkPlayerSwordEnemyCollisions() detects sword hitbox overlapping enemies
+  - checkProjectileEnemyCollisions() detects player projectiles hitting enemies
+  - checkPlayerItemCollisions() detects player touching items
+  - checkEnemyProjectilePlayerCollisions() detects enemy projectiles hitting player
+  - checkPlayerWeaponEnemyCollisions() combines sword and projectile collision checks
+  - checkAllCollisions() integrates with EntityManager for full frame collision check
+  - getDirectionFrom() utility returns direction from source to target (for knockback)
+  - getCenter() utility returns center point of AABB
+  - Re-exports aabbOverlap from math.ts
+- **Learnings for future iterations:**
+  - getDirectionFrom(enemy, player) returns direction from enemy TO player, which is the knockback direction
+  - Collision checks skip entities in certain states (DYING, SPAWNING, collected, invulnerable)
+  - AABB overlap already exists in utils/math.ts - re-exported for convenience
+  - Return types include all info needed for damage processing (entity, damage, direction)
+  - EntityManager provides filtered entity lists (getEnemies, getItems, getPlayerProjectiles, getEnemyProjectiles)
+  - All quality checks pass: typecheck, lint, test (659 tests total)
+---
+
+## 2026-02-03 14:58 CST - IMPL-014
+- **What was implemented**: Damage system for calculating and applying damage
+- **Files created**:
+  - src/combat/DamageSystem.ts - Damage queue and processing system
+  - tests/combat/DamageSystem.test.ts - 43 tests for damage system
+- **Files modified**:
+  - src/combat/index.ts - Added DamageSystem export
+- **Features implemented**:
+  - DamageSystem class with queueDamage(), processQueue() methods
+  - queuePlayerDamage(), queueEnemyDamage() convenience methods
+  - Player damage: HP reduction, triggers knockback and invincibility via existing Player.takeDamage()
+  - Enemy damage: HP reduction, knockback (if knockbackable), death at 0 HP
+  - Invincibility frames prevent repeat damage (checked via isInvincible())
+  - Double-damage prevention: same target can only be damaged once per frame
+  - Sword tier damage calculation (tiers 1-3 with configurable damage)
+  - Multiple damage source types: CONTACT, SWORD, PROJECTILE, BOMB, ENVIRONMENT
+  - DamageResult returns success/failure with reason codes
+  - Singleton pattern via getDamageSystem()/resetDamageSystem()
+- **Learnings for future iterations:**
+  - Check player.getState() === 'DYING' BEFORE checking isInvincible(), since DYING makes player invincible
+  - TypeScript narrows types after guard checks - can't re-check same value that was already excluded
+  - Player.takeDamage() handles knockback direction internally (opposite of fromDirection)
+  - Use Map with entity IDs to track processed targets per frame (prevents double-hits)
+  - MIN_DAMAGE constant ensures damage floor even for 0-damage sources
+  - All quality checks pass: typecheck, lint, test (702 tests total)
+---
+
+## 2026-02-03 15:07 CST - IMPL-015
+- **What was implemented**: Player knockback and invincibility system
+- **Files modified**:
+  - src/entities/Player.ts - Enhanced knockback and invincibility timing
+  - tests/entities/Player.test.ts - Added comprehensive tests for knockback and invincibility
+- **Features implemented**:
+  - Knockback moves exactly 16 pixels over 16 frames in opposite direction of damage
+  - Added `justEnteredInvincible` flag to prevent timer decrement on KNOCKBACK→INVINCIBLE transition frame
+  - Invincibility lasts exactly 60 frames after knockback ends
+  - Sprite flashing: visible 4 frames, invisible 4 frames (via flashTimer and INVINCIBILITY_FLASH_INTERVAL)
+  - takeDamage() returns false when player is invincible (respects invincibility)
+  - Player cannot move or act during KNOCKBACK state
+  - Knockback stops at solid tiles (collision checked)
+- **Learnings for future iterations:**
+  - When transitioning between states that share a timer, need to handle the transition frame carefully
+  - Used `justEnteredInvincible` flag to skip timer decrement on the frame we enter INVINCIBLE
+  - Flash timer should NOT increment on the transition frame to maintain proper 4-frame pattern
+  - Order of operations in update(): updateState runs before updateInvincibility, so state transitions happen before timer decrements
+  - isInvincible() checks both timer > 0 AND specific states (KNOCKBACK, DYING)
+  - All quality checks pass: typecheck, lint, test (715 tests total)
+---
+
+## 2026-02-03 15:12 CST - IMPL-016
+- **What was implemented**: Enemy archetypes data
+- **Files created**:
+  - src/data/enemyArchetypes.ts - Enemy archetype definitions
+  - tests/data/enemyArchetypes.test.ts - 72 tests for enemy archetypes
+- **Files modified**:
+  - src/data/index.ts - Added enemyArchetypes export
+- **Features implemented**:
+  - EnemyArchetype definitions for 7 enemy variants (5 base types):
+    - OCTOROK_RED, OCTOROK_BLUE: RANDOM_WALK movement, ROCK projectile attack
+    - TEKTITE_RED, TEKTITE_BLUE: HOP movement (random/toward Link), contact-only attack
+    - MOBLIN_RED, MOBLIN_BLUE: RANDOM_WALK movement, ARROW projectile attack
+    - KEESE: FLY movement with wobble, contact-only attack
+  - Movement patterns: RANDOM_WALK, HOP, FLY with full parameter definitions
+  - Attack patterns: PROJECTILE (ROCK, ARROW), CONTACT_ONLY
+  - Default flags and vulnerabilities for standard enemies
+  - Helper functions: getEnemyArchetype(), getAllEnemyArchetypes(), getArchetypesByBaseType(), getArchetypesByVariant()
+  - Type guards: isRandomWalkPattern(), isHopPattern(), isFlyPattern(), isProjectileAttack(), isContactOnlyAttack()
+- **Learnings for future iterations:**
+  - archetype.speed should match the movement pattern speed (RANDOM_WALK.speed, HOP.hopSpeed, FLY.speed)
+  - Flying enemies (FLY pattern) typically have ignoresCollision: true and knockbackable: false
+  - Keese has higher spritePriority (3) than ground enemies (2) since it flies above
+  - boomerang vulnerability is 0 for all standard enemies (stuns but doesn't damage)
+  - PROJECTILE attacks use different aimModes: CARDINAL_AT_LINK (Octorok) vs CURRENT_FACING (Moblin)
+  - Blue variants are consistently faster and have more HP than red variants
+  - All quality checks pass: typecheck, lint, test (787 tests total)
+---
+
+## 2026-02-03 15:17 CST - IMPL-017
+- **What was implemented**: Enemy entity with state machine and movement patterns
+- **Files created**:
+  - src/entities/Enemy.ts - Full enemy entity implementation
+  - tests/entities/Enemy.test.ts - 54 tests for enemy behavior
+- **Files modified**:
+  - src/entities/index.ts - Added Enemy export
+- **Features implemented**:
+  - Enemy state machine: SPAWNING (30 frames), ACTIVE, STUNNED, KNOCKBACK, DYING
+  - RANDOM_WALK movement: walk duration, pause duration, random direction changes
+  - HOP movement: hop duration, rest duration, RANDOM or TOWARD_LINK direction
+  - FLY movement: continuous flight with wobble, direction changes, screen bounds clamping
+  - Collision detection integration via setCollisionChecker()
+  - Player targeting integration via setPlayerProvider()
+  - Knockback for knockbackable enemies (16 pixels over 16 frames)
+  - Stun support for boomerangStunnable enemies
+  - Death animation (puff sprite) when HP reaches 0
+  - Spawn animation (invisible first half, visible second half)
+  - createEnemy factory function for EntityManager integration
+- **Learnings for future iterations:**
+  - Use `as const` instead of type annotation to satisfy prefer-as-const lint rule
+  - Movement patterns use injectable collision checker for testing flexibility
+  - Enemy spawning has two phases: invisible then visible (SPAWN_DURATION/2 each)
+  - FLY pattern enemies need screen bounds clamping to prevent them flying off-screen
+  - HOP pattern uses separate isHopping flag and hopTimer distinct from movement timer
+  - RANDOM_WALK alternates between isMoving=true (walking) and isMoving=false (pausing)
+  - All quality checks pass: typecheck, lint, test (841 tests total)
+---
+
+## 2026-02-03 15:22 CST - IMPL-018
+- **What was implemented**: Screen transitions for overworld scrolling
+- **Files created**:
+  - src/world/ScreenTransition.ts - Full screen transition system
+  - tests/world/ScreenTransition.test.ts - 51 tests for transition behavior
+- **Files modified**:
+  - src/world/index.ts - Added ScreenTransition exports
+- **Features implemented**:
+  - ScreenTransition class with start(), update(), isComplete(), finalize() methods
+  - SCROLL transition: horizontal (64 frames) and vertical (44 frames) at 4px/frame
+  - FADE transition: 9 frames (4 fade out, 1 load, 4 fade in) for dungeon rooms
+  - WIPE transition: 33 frames (16 close, 1 load, 16 open) for cave/dungeon entry
+  - getScrollOffset() calculates position for rendering both screens during scroll
+  - getFromScreenPosition()/getToScreenPosition() for dual-screen rendering
+  - getFadeAlpha()/getWipeProgress() for effect rendering
+  - getPlayerPositionAfterTransition() positions player at opposite edge
+  - getPlayerPositionDuringTransition() moves player with scroll
+  - shouldLoadNewScreen() indicates when to swap screen data
+  - Singleton pattern via getScreenTransition()/resetScreenTransition()
+- **Learnings for future iterations:**
+  - JavaScript can produce -0 which fails deep equality checks; normalize with `(n === 0 ? 0 : n)`
+  - Screen transition types from spec: SCROLL (overworld), FADE (dungeon), WIPE (cave)
+  - Both screens are rendered simultaneously during SCROLL transitions
+  - Player moves with the scroll offset during transition
+  - FADE/WIPE have distinct "load points" where new screen data should be swapped
+  - TransitionState stores both fromTiles and toTiles for dual-screen rendering
+  - All quality checks pass: typecheck, lint, test (892 tests total)
+---
+
+## 2026-02-03 15:28 CST - IMPL-019
+- **What was implemented**: Animation system with playback and frame advancement
+- **Files created**:
+  - src/animation/AnimationData.ts - Animation definitions for all game entities
+  - src/animation/AnimationSystem.ts - Animation playback and frame advancement system
+  - src/animation/index.ts - Barrel export for animation module
+  - tests/animation/AnimationData.test.ts - 48 tests for animation definitions
+  - tests/animation/AnimationSystem.test.ts - 52 tests for animation system
+- **Features implemented**:
+  - Animation/AnimationFrame interfaces with spriteKey, duration, hitboxActive, offsetX/Y
+  - Link animations: idle (4 directions), walk (4 directions, 2 frames @ 8 ticks each), attack (4 directions, 4 frames with hitbox active on frames 2-3), knockback, death spin, pickup
+  - Enemy animations: walk cycles for Octorok (red/blue), Tektite, Moblin (red/blue), Keese (faster flap at 4 ticks), Aquamentus
+  - Death puff animation (3 frames @ 4 ticks, DESTROY on complete)
+  - Projectile animations: sword beam, boomerang (4 frames), fireball
+  - Item bob animations with Y offset (-2, 0, +2) for floating effect
+  - AnimationSystem.play() with forceRestart option
+  - AnimationSystem.update() with frame timer decrement and advancement
+  - Completion behaviors: DESTROY (mark for removal), HOLD_LAST (stay on last frame), RESET (return to first frame)
+  - Loop tracking with loopCount
+  - Helper functions: getLinkAnimationName(), getEnemyAnimationName(), getAnimationDuration()
+  - Singleton pattern via getAnimationSystem()/resetAnimationSystem()
+- **Learnings for future iterations:**
+  - Use `as const` for array literals to get tuple types with TypeScript strict mode
+  - Extract array element access into separate constants to avoid non-null assertions
+  - When testing "no-op" behavior, verify state is unchanged, not that it changed by a specific amount
+  - Animation hitboxActive flag allows attack animations to define active hitbox frames
+  - Item bob animations use offsetY to create floating visual effect without changing entity position
+  - All quality checks pass: typecheck, lint, test (992 tests total)
+---
+
+## 2026-02-03 15:42 CST - IMPL-020
+- **What was implemented**: HUD renderer for top 64 pixels of screen
+- **Files created**:
+  - src/rendering/HudRenderer.ts - Full HUD rendering with hearts, counters, minimap, item slots
+  - tests/rendering/HudRenderer.test.ts - 42 tests for HUD rendering
+- **Files modified**:
+  - src/rendering/index.ts - Added HudRenderer exports
+- **Features implemented**:
+  - HUD_LAYOUT constants matching spec section 5.13 (minimap, hearts, counters, item slots)
+  - renderHearts() with calculateHeartStates() - FULL/HALF/EMPTY based on current/max HP
+  - renderCounters() for rupees (X###), keys (X##), bombs (X##) with icons
+  - renderMinimap() for overworld (16x8 grid, 4x4 pixel dots per screen)
+  - renderDungeonMinimap() for dungeons (8x8 rooms, map/compass item support)
+  - Blinking current position (toggle every 16 frames)
+  - renderItemSlots() for B-item and A-item (sword) with slot frames
+  - createHudData() helper to convert Inventory + player state to HudData
+  - HeartState type: 'FULL' | 'HALF' | 'EMPTY'
+- **Learnings for future iterations:**
+  - Heart calculation: hpForThisHeart = currentHP - i * 2; >=2=FULL, ==1=HALF, else EMPTY
+  - Minimap dots blink based on frameCounter / 16 % 2
+  - Counter text uses padStart for alignment: rupees 3 chars, keys/bombs 2 chars
+  - HUD layout from spec: hearts at (176, 40), counters at (96, 16/24/32), minimap at (16, 8)
+  - All quality checks pass: typecheck, lint, test (1034 tests total)
+---
+
+## 2026-02-03 15:47 CST - IMPL-021
+- **What was implemented**: Inventory manager system
+- **Files created**:
+  - src/inventory/InventoryManager.ts - Full inventory management with all required methods
+  - src/inventory/index.ts - Barrel export for inventory module
+  - tests/inventory/InventoryManager.test.ts - 98 tests for inventory manager
+- **Features implemented**:
+  - InventoryManager class with full inventory tracking (swords, rupees, keys, bombs, hearts, all items)
+  - DEFAULT_INVENTORY constant with all starting values
+  - Rupee management: addRupees(), spendRupees(), getRupees() - capped at 255
+  - Key management: addKey(), useKey(), getKeys() - magic key allows infinite uses
+  - Bomb management: addBomb(), useBomb(), getBombs(), upgradeBombCapacity() - capacity 8->12->16
+  - Heart container management: addHeartContainer(), getHeartContainers(), getMaxHP() - max 16
+  - HP management: getCurrentHP(), setCurrentHP(), heal(), takeDamage(), isAtFullHP()
+  - Damage reduction via rings: no ring (1x), blue ring (0.5x), red ring (0.25x)
+  - Major item collection via addItem() for all item types
+  - Sword levels: 0=none, 1=wooden, 2=white, 3=magical
+  - B-item system: getSelectedBItem(), setSelectedBItem(), getAvailableBItems(), canUseBItem()
+  - Save/load support: loadFromSave(), toSaveData()
+  - Singleton pattern via getInventoryManager()/resetInventoryManager()
+- **Learnings for future iterations:**
+  - Inventory uses the Inventory interface from types.ts which has specific literal types (e.g., bombCapacity: 8 | 12 | 16)
+  - Heart containers track separately from the inventory interface (heartContainers and currentHP are runtime state)
+  - Ring damage reduction applies a multiplier with minimum 1 damage
+  - B-item availability depends on both having the item AND having consumables (bombs need count > 0, bow needs arrows)
+  - All quality checks pass: typecheck, lint, test (1132 tests total)
+---
+
+## 2026-02-03 15:51 CST - IMPL-022
+- **What was implemented**: Item drops that spawn when enemies die
+- **Files created**:
+  - src/entities/ItemDrop.ts - ItemDrop entity with bob animation, despawn timer, fairy movement
+  - tests/entities/ItemDrop.test.ts - 74 tests for item drop functionality
+- **Files modified**:
+  - src/entities/index.ts - Added ItemDrop export
+- **Features implemented**:
+  - ItemDrop class extending BaseEntity implementing ItemEntity interface
+  - Bob animation using sine wave (BOB_AMPLITUDE=2, BOB_PERIOD=60 frames)
+  - Despawn after ITEM_DESPAWN_FRAMES (600 = ~10 seconds)
+  - Warning flash during last 2 seconds before despawn (toggle every 8 frames)
+  - Fairy special movement: moves in random directions, bounces off screen edges
+  - Drop table system with groups A/B/C/D from constants.ts
+  - getDropFromGroup(), getEnemyDropGroup(), determineEnemyDrop() helpers
+  - applyItemToInventory() for inventory integration
+  - canCollectItem() check (hearts can't be collected at full HP)
+  - createItemDrop() factory function for EntityManager
+  - ITEM_SPRITE_KEYS mapping item types to sprite assets
+- **Learnings for future iterations:**
+  - Items at full HP (like hearts) should check canCollectItem() before collection
+  - Fairy is unique - it moves around and always heals even at full HP
+  - Drop tables cycle through 4 positions using kill counter modulo 4
+  - Flash timing uses lifetime < 120 frames and floor(lifetime/8) % 2
+  - EntityManager already has spawnItem() method that accepts factory config
+  - All quality checks pass: typecheck, lint, test (1206 tests total)
+---
+
+## 2026-02-03 18:30 CST - IMPL-023
+- **What was implemented**: Basic audio system with Web Audio API
+- **Files created**:
+  - src/audio/AudioContext.ts - Web Audio API bootstrap and context management with user gesture handling
+  - src/audio/ToneGenerator.ts - NES-authentic pulse/triangle/noise synthesis using PeriodicWave and AudioBuffer
+  - src/audio/AudioManager.ts - Main audio manager with SFX playback, priority system, mute control
+  - src/audio/index.ts - Barrel export for audio module
+  - tests/audio/AudioContext.test.ts - 33 tests for context management
+  - tests/audio/ToneGenerator.test.ts - 31 tests for tone generation
+  - tests/audio/AudioManager.test.ts - 40 tests for audio manager
+- **Features implemented**:
+  - AudioContextManager with init(), suspend(), resume(), mute controls, volume control
+  - Handles browser autoplay policy with one-shot event listeners (keydown/click/touchstart)
+  - ToneGenerator with playPulse(), playTriangle(), playNoise(), playFrequencySweep()
+  - NES pulse duty cycle emulation (0.125, 0.25, 0.5, 0.75) using Fourier series
+  - LFSR noise generation for authentic NES noise (short 93-step and long 32767-step modes)
+  - 10 sound effects defined: sword_slash, enemy_hit, enemy_kill, link_hurt, item_pickup_small, item_pickup_heart, bomb_explode, low_health (looping), secret_reveal, cursor_move
+  - Channel priority system (0-10, higher priority interrupts lower)
+  - Per-frame SFX playback with frame advancement in update()
+  - Global, music, and SFX mute controls
+  - Singleton patterns via getAudioContextManager() and getAudioManager()
+- **Learnings for future iterations:**
+  - TypeScript strict mode requires undefined check for array index access (e.g., `frames[index]`)
+  - When mocking Web Audio in Node.js tests, must set both `window.AudioContext` AND global `AudioContext`
+  - LFSR noise: short mode (93-step) = metallic, long mode (32767-step) = white noise hiss
+  - NES pulse channels support 4 duty cycles via different harmonic content
+  - SFX priority system: higher priority always interrupts lower on same channel
+  - Looping SFX reset frameIndex to 0 at end, non-looping SFX are removed
+  - All quality checks pass: typecheck, lint, test (1310 tests total)
+---
+
+## 2026-02-03 18:33 CST - IMPL-024
+- **What was implemented**: Title screen with update and render methods
+- **Files created**:
+  - src/screens/TitleScreen.ts - Full title screen implementation with update/render pattern
+  - src/screens/index.ts - Barrel export for screens module
+  - tests/screens/TitleScreen.test.ts - 31 tests for title screen functionality
+- **Features implemented**:
+  - TitleScreen class with update() and render() methods
+  - TITLE_SCREEN_CONFIG constant with all text and styling configuration
+  - Game title "THE LEGEND OF ZELDA" centered on screen
+  - Subtitle "TypeScript NES Clone" below title
+  - "PRESS START" prompt with 30-frame blink interval
+  - Decorative Triforce (3 gold triangles) rendered with canvas path API
+  - Start button triggers transition to FILE_SELECT phase
+  - TitleScreenUpdateResult interface returns nextPhase for game state transitions
+  - Singleton pattern via getTitleScreen()/resetTitleScreen()
+- **Learnings for future iterations:**
+  - Screen classes follow update/render pattern for separation of concerns
+  - TitleScreenUpdateResult returns { nextPhase: GamePhase | null } for clean state machine integration
+  - Text rendering must reset textAlign and textBaseline after drawing to prevent affecting other renders
+  - Canvas path API (beginPath/moveTo/lineTo/closePath/fill) used for simple geometric shapes
+  - Prompt blinking uses frameCounter modulo interval with toggle pattern
+  - All quality checks pass: typecheck, lint, test (1341 tests total)
+---
+
+## 2026-02-03 18:39 CST - IMPL-025
+- **What was implemented**: Bootstrap and main entry point for the game
+- **Files modified**:
+  - src/main.ts - Full game bootstrap with Game class orchestrating all systems
+  - src/world/WorldManager.ts - Added getCurrentScreenCol(), getCurrentScreenRow(), getCurrentTileIds() methods
+- **Features implemented**:
+  - Game class with init(), start(), stop() methods
+  - Canvas setup: 256x240 native, 3x CSS scale, pixelated rendering
+  - Systems wired: input, audio, renderer, gameState, world, entities, collision, damage
+  - Entity factory registration for enemies and items
+  - Overworld screen data loading into WorldManager
+  - Game loop with phase-based update (TITLE, FILE_SELECT, GAMEPLAY, PAUSE, TRANSITION, DEATH, CONTINUE_SCREEN, ITEM_PICKUP)
+  - Phase-based rendering with title screen, file select placeholder, gameplay, pause overlay, death, and continue screens
+  - Screen transitions with player repositioning
+  - Collision detection integration with damage processing
+  - HUD rendering with inventory data
+  - Game starts on TITLE phase, transitions to GAMEPLAY when START pressed
+  - Debug access via window.__zeldaGame
+- **Learnings for future iterations:**
+  - Player.update() takes deltaFrame:number, not InputSnapshot; input handling is via handleInput()
+  - EntityManager.update() also takes deltaFrame:number
+  - Player properties are public (player.hp, player.x, player.y, player.active)
+  - Use getCollisionDetection() singleton, then call checkAllCollisions() method
+  - TileData has tileId property, not id
+  - Factory configs should be cast to correct object types ({ archetypeId: string } or { itemType: string })
+  - All quality checks pass: typecheck, lint, test (1341 tests total)
+---
+
+## 2026-02-03 18:45 CST - IMPL-026
+- **What was implemented**: Gameplay integration for playable demo
+- **Files modified**:
+  - src/main.ts - Enhanced Game class with full gameplay integration
+- **Features implemented**:
+  - Enemy spawning when loading screens using queueEnemySpawn()
+  - Collision checker and player provider set on enemies for AI targeting
+  - Item drops when enemies die using determineEnemyDrop() with kill counter
+  - Item collection with applyItemToInventory() for hearts, rupees, bombs, keys
+  - Pause/unpause toggle with START button
+  - Enemy projectile collision handling
+  - Player starts with wooden sword (WOODEN_SWORD) via addItem()
+  - Screen transitions clear old entities and spawn new enemies
+  - Kill counter cycles 0-9 for drop table variation
+  - dyingEnemies Set tracks enemies for one-time item drop spawning
+  - Audio feedback on item pickup (item_pickup_small, item_pickup_heart)
+- **Learnings for future iterations:**
+  - Use `instanceof Enemy` to check if enemy entity is the concrete Enemy class
+  - determineEnemyDrop() returns null if no drop should occur (based on DROP_CHANCE)
+  - canCollectItem() prevents hearts from being collected at full HP
+  - Kill counter should increment even when no item drops (tracks total kills)
+  - dyingEnemies tracking prevents duplicate item drops for same enemy death
+  - PLAY_AREA_WIDTH and PLAY_AREA_HEIGHT constants for screen transition positioning
+  - Player position after transition should be inside the screen (8-24 pixels from edge)
+  - All quality checks pass: typecheck, lint, test (1341 tests total)
+---
+
+## 2026-02-03 18:55 CST - IMPL-027
+- **What was implemented**: Pause screen with inventory display and map
+- **Files created**:
+  - src/screens/PauseScreen.ts - Full pause screen implementation with update/render pattern
+  - tests/screens/PauseScreen.test.ts - 56 tests for pause screen functionality
+- **Files modified**:
+  - src/screens/index.ts - Added PauseScreen exports
+  - src/main.ts - Integrated PauseScreen, added visitedScreens tracking
+- **Features implemented**:
+  - PauseScreen class with update() and render() methods following TitleScreen pattern
+  - Full overworld map display (16x8 grid) with visited screens shown as gray, current position blinking green
+  - Dungeon map display (8x8 rooms) with map/compass item support, Triforce room blinking red
+  - B-item inventory grid (4x2 cells) with cursor navigation via D-pad
+  - Item selection with A button, updates InventoryManager.selectedBItem
+  - Triforce pieces display (8 slots for collected pieces)
+  - Equipment indicators: ring (blue/red), sword (brown/white/gold), shield, power bracelet, raft, ladder, magic key
+  - Cursor blinks at 15-frame interval, current position blinks at 16-frame interval
+  - START button toggles between PAUSE and GAMEPLAY phases
+  - visitedScreens Set in Game class tracks explored screens for map display
+  - B_ITEM_ORDER constant defines display order: BOOMERANG, BOMB, BOW_ARROW, CANDLE, RECORDER, FOOD, POTION, MAGIC_ROD
+- **Learnings for future iterations:**
+  - Screen classes follow update(input, data) / render(ctx, data) pattern with data interface
+  - PauseScreenData interface holds inventory, HP, screen position, visitedScreens, etc.
+  - PauseScreenUpdateResult can include selectedBItem to signal item selection change
+  - Cursor navigation clamps to available items (Math.min/Math.max with availableItems.length)
+  - Use hasItem() helper method to check inventory flags per B-item type
+  - Drawing equipment indicators uses simple shapes (arc for ring, fillRect for sword/shield)
+  - All quality checks pass: typecheck, lint, test (1397 tests total, +56 new)
+---
+
+## 2026-02-03 20:24 CST - IMPL-028
+- **What was implemented**: Player death sequence and continue screen
+- **Files created**:
+  - src/screens/ContinueScreen.ts - Full continue screen with menu options and rendering
+  - tests/screens/ContinueScreen.test.ts - 40 tests for continue screen functionality
+- **Files modified**:
+  - src/screens/index.ts - Added ContinueScreen exports
+  - src/main.ts - Integrated death/continue phases with respawn logic
+- **Features implemented**:
+  - ContinueScreen class with update() and render() methods following TitleScreen pattern
+  - Continue/Save&Quit menu options with cursor navigation (UP/DOWN)
+  - Cursor blinking at 15-frame interval, menu selection with START or A button
+  - GAME OVER text with decorative hearts showing respawn amount
+  - DEATH phase: plays death animation (~80 frames via Player.stateTimer)
+  - CONTINUE_SCREEN phase: handles menu selection and transitions
+  - respawnPlayer() method: resets player with 3 hearts (CONTINUE_HP=6), clears entities, respawns enemies
+  - Player reset maintains screen position but restores HP to 3 hearts
+  - Save&Quit returns to title screen (save functionality pending IMPL-029)
+  - Singleton pattern via getContinueScreen()/resetContinueScreen()
+- **Learnings for future iterations:**
+  - Player.active becomes false when death animation completes - use this to trigger CONTINUE_SCREEN transition
+  - DEATH phase should update player to allow death animation to complete before transitioning
+  - Screen classes follow pattern: update(input) returns { nextPhase, action } result object
+  - For respawn: clear entities, re-setup factories, spawn new enemies for current screen
+  - CONTINUE_HP constant (6 = 3 hearts) already existed in constants.ts
+  - All quality checks pass: typecheck, lint, test (1437 tests total, +40 new)
+---
+
+## 2026-02-03 20:30 CST - IMPL-029
+- **What was implemented**: Save/Load system with localStorage persistence
+- **Files created**:
+  - src/progression/SaveSystem.ts - Full save system with localStorage persistence
+  - src/progression/index.ts - Barrel export for progression module
+  - tests/progression/SaveSystem.test.ts - 69 tests for save system
+- **Features implemented**:
+  - SaveSystem class with save(), load(), deleteFile(), getFiles() methods
+  - 3 save slots support (configurable via SAVE_SLOTS constant)
+  - SaveFileStorage interface for localStorage persistence
+  - createNewSaveFile() factory for new game files
+  - createDefaultProgressionFlags() for initial progression state
+  - createEmptyDungeonProgress() for each dungeon (9 dungeons)
+  - createDefaultOverworldProgress() for visited screens tracking
+  - Comprehensive validation for all save data fields:
+    - Inventory validation (sword level 0-3, bomb capacity 8/12/16, ring level 0-2, etc.)
+    - ProgressionFlags validation (triforce fragments array length 8, etc.)
+    - DungeonProgress validation for all 9 dungeons
+    - OverworldProgress validation
+  - Save version tracking for future migration support
+  - createNewGame() method with name sanitization (uppercase, trim, max 8 chars)
+  - updateSave() for partial updates to existing saves
+  - incrementDeathCount() convenience method
+  - clearAllSaves() for testing/reset
+  - Static isValidSaveFile() for external validation
+  - Singleton pattern via getSaveSystem()/resetSaveSystem()
+- **Learnings for future iterations:**
+  - localStorage check needs both `typeof window !== 'undefined'` AND `typeof localStorage !== 'undefined'`
+  - TypeScript readonly arrays only enforce at compile-time, not runtime
+  - For testing localStorage, need to stub both `window` and `localStorage` globals
+  - Save validation should check all nested objects (inventory, progression, dungeons, overworld)
+  - SAVE_SLOTS, SAVE_VERSION, LOCAL_STORAGE_KEY already defined in constants.ts
+  - DEFAULT_INVENTORY from InventoryManager.ts is reusable for new save files
+  - All quality checks pass: typecheck, lint, test (1506 tests total, +69 new)
+---
+
+## 2026-02-03 20:38 CST - IMPL-030
+- **What was implemented**: File select screen with save slot management
+- **Files created**:
+  - src/screens/FileSelectScreen.ts - Full file select screen implementation with 3 modes (SELECT, REGISTER, ELIMINATE)
+  - tests/screens/FileSelectScreen.test.ts - 63 tests for file select screen
+- **Files modified**:
+  - src/screens/index.ts - Added FileSelectScreen exports
+  - src/main.ts - Integrated FileSelectScreen, added continueFromSave() and saveCurrentGame() methods
+- **Features implemented**:
+  - FileSelectScreen class with update() and render() methods following existing screen patterns
+  - SELECT mode: Display 3 save slots with name/hearts/deaths, navigate with UP/DOWN, select with A/START
+  - REGISTER mode: Character grid entry (A-Z, 0-9, space), name up to 8 characters, B to delete, START/END to confirm
+  - ELIMINATE mode: Delete save files, red-themed danger UI
+  - Empty slots automatically enter registration when selected
+  - Slots with saves continue the game when selected
+  - Integration with SaveSystem for creating, loading, and deleting save files
+  - continueFromSave() restores inventory, visited screens, and kill counter from save data
+  - saveCurrentGame() saves current progress on death/quit
+  - currentSaveSlot tracking for save persistence during gameplay
+  - Singleton pattern via getFileSelectScreen()/resetFileSelectScreen()
+- **Learnings for future iterations:**
+  - Screen classes should follow update(input) / render(ctx) pattern for consistency
+  - When manually setting mode in tests, need to also set related flags (e.g., isSelectingChar for REGISTER mode)
+  - Array access with strict TS returns `T | undefined`, use `?? null` to convert to `T | null`
+  - InventoryManager.loadFromSave() expects SaveFile, not Inventory - it extracts the inventory from the SaveFile
+  - Files array from getFiles() is readonly, elements may be undefined so nullish coalescing is needed
+  - All quality checks pass: typecheck, lint, test (1569 tests total, +63 new)
+---
+
+## 2026-02-03 20:45 CST - IMPL-031
+- **What was implemented**: Dungeon 1 room data
+- **Files created**:
+  - src/data/dungeonData.ts - Full dungeon data structure with Dungeon 1 definition
+  - tests/data/dungeonData.test.ts - 68 tests for dungeon data
+- **Files modified**:
+  - src/data/index.ts - Added dungeonData export
+- **Features implemented**:
+  - DUNGEON_TILE_IDS constant for dungeon-specific tiles (floor, wall, block, doors, stairs)
+  - DUNGEON_TILE_COLLISION_MAP for dungeon tile collisions
+  - makeDungeonTile(), makeDungeonRow(), makeDoors() helper functions
+  - Dungeon 1 (Eagle) definition with 9 fully defined rooms:
+    - Entrance room (3,7) with stairs and open door up
+    - Combat room (3,6) with Stalfos enemies and 4-way doors
+    - Key room (2,6) with Keese enemies and key item drop
+    - Water room (4,6) with Gel enemies
+    - Compass room (5,6) with compass item
+    - Upper corridor (3,5) with locked door to boss area
+    - Map room (3,4) with shutter door and map item
+    - Boss room (3,3) with Aquamentus boss
+    - Triforce room (2,3) with triforce piece
+  - DungeonDefinition with metadata: dungeonId, name, gridWidth/Height, entrance/boss/triforce coords
+  - Helper functions: getDungeon(), getDungeonRoom(), getDungeonEntrance(), getDungeonBossRoom(), getDungeonTriforceRoom()
+  - getDefinedDungeonRooms(), getDungeonRoomCount(), getAdjacentRoom()
+  - Door state helpers: isDoorOpen(), isDoorLocked(), isDoorShutter(), isDoorBombable()
+  - Validation: isRoomDefined(), getAllDungeonIds(), validateDungeonData()
+- **Learnings for future iterations:**
+  - Use Array.from() with factory functions for 2D array initialization in TypeScript strict mode
+  - Helper setRoom() function avoids undefined array access issues
+  - Dungeon rooms use same 16x11 tile grid as overworld (TILES_PER_ROW x TILES_PER_COL)
+  - Door states: OPEN, LOCKED (requires key), SHUTTER (opens on room clear), BOMBABLE, WALL
+  - Room connections must be bidirectional (if A->B open, then B->A must also have matching door)
+  - DungeonRoom.items with requiresKillAll flag for items that appear after enemies defeated
+  - Different tile IDs from overworld (DUNGEON_FLOOR=9, DUNGEON_WALL=10, etc.) for different palette
+  - All quality checks pass: typecheck, lint, test (1637 tests total, +68 new)
+---
+
+## 2026-02-03 20:51 CST - IMPL-032
+- **What was implemented**: Dungeon navigation system with door management
+- **Files created**:
+  - src/world/DungeonManager.ts - Manages dungeon state, room transitions, and door states
+  - tests/world/DungeonManager.test.ts - 44 tests for dungeon navigation
+- **Files modified**:
+  - src/world/index.ts - Added DungeonManager exports
+  - src/main.ts - Integrated dungeon entry, room transitions, locked/shutter door handling
+- **Features implemented**:
+  - DungeonManager singleton class for managing dungeon state
+  - enterDungeon(dungeonId) / exitDungeon() for dungeon entry/exit from overworld
+  - Dungeon entry detection via overworld stair tiles (ScreenEntrance with destinationType: 'DUNGEON')
+  - Runtime door state tracking per room (can change from base definition)
+  - Locked doors: isDoorLocked(), tryUnlockDoor() - requires keys to open
+  - Shutter doors: isDoorShutter(), markRoomCleared() - open when all enemies defeated
+  - Room transition: checkRoomTransition(), transitionToRoom(), canTransitionTo()
+  - Door position info: getDoorPositions() returns hitbox info for each door
+  - Stairs detection: isOnStairs() for dungeon exit
+  - getLockedDoorAtPlayer() for key usage prompt
+  - getUpdatedTiles() returns tiles with current door states
+  - Player spawn positioning: getSpawnPositionForDirection(), getEntranceSpawnPosition()
+  - Integration with main.ts:
+    - checkOverworldEntrances() checks for dungeon/cave entrances
+    - enterDungeon() loads dungeon room, spawns enemies, plays audio
+    - handleDungeonGameplay() handles shutter doors, locked doors, room transitions
+    - handleDungeonRoomTransition() performs room changes
+    - exitDungeon() returns to overworld
+- **Learnings for future iterations:**
+  - Dungeon rooms use column wipe/fade transitions (not scroll like overworld)
+  - Door states are tracked at runtime (RuntimeDoorState) separate from static room definition
+  - Room cleared tracking uses Set<string> with "col,row" keys
+  - Shutter doors open automatically when markRoomCleared() is called
+  - Player position after transition depends on entry direction (opposite edge)
+  - Dungeon collision uses same worldManager.checkCollision() but with dungeon tile collision map
+  - DungeonManager tracks cleared rooms to prevent re-spawning enemies
+  - Key usage is automatic when player approaches locked door with available keys
+  - All quality checks pass: typecheck, lint, test (1681 tests total, +44 new)
+---
+
+## 2026-02-03 20:56 CST - IMPL-033
+- **What was implemented**: Dungeon items (map, compass, key) collection and tracking
+- **Files modified**:
+  - src/world/DungeonManager.ts - Added DungeonProgressState tracking, map/compass/triforce collection, room visit tracking, item collection tracking, export/import for saves
+  - src/world/index.ts - Added DungeonProgressState export
+  - src/main.ts - Added dungeon item spawning, collection, item pickup phase, pause screen dungeon map integration, triforce count tracking
+  - tests/world/DungeonManager.test.ts - Added 21 new tests for dungeon progress functionality
+- **Features implemented**:
+  - DungeonProgressState tracks: hasMap, hasCompass, bossDefeated, triforceCollected, visitedRooms, collectedRoomItems
+  - Map reveals full dungeon layout on pause screen when collected
+  - Compass shows Triforce room location (blinking red) on pause screen
+  - Keys spawn in dungeon rooms after clearing enemies (requiresKillAll items)
+  - Keys are added to inventory and used automatically at locked doors
+  - Item pickup animation shows item above Link's head for 2 seconds
+  - Items tracked per-room with index to prevent re-collection
+  - getDungeonMapData() provides data for pause screen rendering
+  - exportProgress()/loadProgress() for save/load integration
+- **Learnings for future iterations:**
+  - Use Map.keys() iterator when only the key is needed, not destructuring entries
+  - Room items with requiresKillAll only appear after dungeonManager.markRoomCleared()
+  - Track spawned items with Set<number> by item index to prevent duplicate spawning
+  - Item pickup phase uses ITEM_PICKUP GamePhase with 120 frame duration
+  - Pass dungeonMap data to PauseScreen via PauseScreenData.dungeonMap
+  - The pause screen already has renderDungeonMap() that handles all the visualization
+  - All quality checks pass: typecheck, lint, test (1702 tests total, +21 new)
+---
+
+## 2026-02-03 21:05 CST - IMPL-034
+- **What was implemented**: Dungeon 1 boss (Aquamentus) with full boss mechanics
+- **Files created**:
+  - src/entities/Boss.ts - Boss entity class with boss-specific behavior (state machine, vertical drift movement, attack patterns)
+  - src/entities/Projectile.ts - Projectile entity class with spread shot support for fireball attacks
+- **Files modified**:
+  - src/data/enemyArchetypes.ts - Added AQUAMENTUS archetype (6 HP, 32x32 sprite, RANDOM_WALK movement, PROJECTILE attack with 3-fireball spread)
+  - src/entities/index.ts - Added exports for Boss and Projectile modules
+  - src/main.ts - Added boss/projectile factory registration, boss defeat tracking, Triforce piece spawning on boss death
+  - tests/data/enemyArchetypes.test.ts - Updated test counts for new archetype
+- **Features implemented**:
+  - AQUAMENTUS enemy archetype: 6 HP, contact damage 2, slow vertical drift movement (0.25 speed)
+  - Boss class with state machine: SPAWNING, ACTIVE, KNOCKBACK, DYING
+  - Slow vertical drift on right side of screen (Aquamentus stays in right half)
+  - 3-fireball spread attack pattern with 22.5 degree spread, 120-180 frame cooldown
+  - Projectile class with support for angled shots (velocity calculated from base direction + angle offset)
+  - Boss takes damage but is not knockbackable (just flashes on hit)
+  - Boss death triggers Triforce piece spawn at boss position
+  - Boss room doors lock until defeated (shutter doors for boss rooms)
+  - isBossArchetype() helper identifies boss enemy types for factory selection
+- **Learnings for future iterations:**
+  - Boss archetypes use same structure as regular enemies but with special handling via isBossArchetype()
+  - Projectile velocity uses trigonometry for angled shots: vx = cos(radians) * speed, vy = sin(radians) * speed
+  - Spread patterns calculate evenly-spaced angles: startAngle = -spread * (count-1) / 2
+  - velocityX/velocityY need `override` keyword when base class declares them but subclass also declares them
+  - Boss movement pattern uses RANDOM_WALK but interprets it as vertical drift with pause cycles
+  - All quality checks pass: typecheck, lint, test (1702 tests total)
+---
+
+## 2026-02-03 21:10 CST - IMPL-035
+- **What was implemented**: Triforce collection and progression tracking
+- **Files created**:
+  - src/progression/ProgressionManager.ts - Triforce piece tracking and game progression management
+  - tests/progression/ProgressionManager.test.ts - 29 tests for ProgressionManager
+- **Files modified**:
+  - src/progression/index.ts - Added ProgressionManager exports
+  - src/main.ts - Integrated ProgressionManager for Triforce tracking and dungeon entrance visits
+- **Features implemented**:
+  - ProgressionManager singleton class with Triforce piece tracking via DungeonManager integration
+  - getTriforceCount() counts pieces from dungeons 1-8
+  - hasTriforceFromDungeon(id) checks specific dungeon completion
+  - getDungeonStatus(id) returns full completion status (map, compass, boss, triforce)
+  - isDungeonComplete(id) and getCompletedDungeons() for dungeon completion queries
+  - Game win condition tracking: isGanonDefeated(), isZeldaRescued(), isGameComplete()
+  - Sword collection tracking: hasStartingSword(), hasWhiteSword(), hasMagicalSword()
+  - Dungeon entrance visit tracking: visitDungeonEntrance(), hasVisitedDungeonEntrance()
+  - Save/load support via loadFromSave() and toSaveData()
+  - resetProgressionManager() added to game reset flow
+  - ITEM_PICKUP phase already existed from IMPL-033/034
+  - Triforce display on pause screen already existed from IMPL-027
+  - Triforce fanfare (secret_reveal sfx) already existed from IMPL-033
+- **Learnings for future iterations:**
+  - ProgressionManager acts as a facade over DungeonManager for Triforce/progression queries
+  - DungeonProgressState per dungeon tracks: hasMap, hasCompass, bossDefeated, triforceCollected
+  - collectTriforce(dungeonId) returns event data with totalPieces and isComplete flag
+  - Only dungeon 1 is defined in test data - tests must account for this limitation
+  - All quality checks pass: typecheck, lint, test (1731 tests total)
+---
+
+## 2026-02-03 21:15 CST - IMPL-036
+- **What was implemented**: Sword beam projectile when at full health
+- **Files changed**:
+  - src/constants.ts - Updated SWORD_BEAM speed to 3px/frame per spec
+  - src/entities/Projectile.ts - Added ProjectileTileCollisionChecker type and setTileCollisionChecker() method for wall collision detection
+  - src/entities/EntityManager.ts - Added addProjectile() method for adding pre-configured projectiles
+  - src/combat/CollisionDetection.ts - Added projectile reference to WeaponEnemyCollision interface
+  - src/main.ts - Added trySpawnSwordBeam() method, sword beam tracking, A button attack handling, projectile deactivation on enemy hit
+- **Features implemented**:
+  - Sword beam spawns when player attacks at full HP and has a sword
+  - Beam travels at 3px/frame in player's facing direction
+  - Only one beam can exist at a time (tracked via activeSwordBeam property)
+  - Beam despawns on: enemy hit, solid tile collision, or screen edge
+  - Beam cleared on screen transitions, dungeon room transitions, and respawn
+  - Beam damage same as melee sword (uses inventory sword level)
+- **Learnings for future iterations:**
+  - Use different type name (ProjectileTileCollisionChecker) to avoid conflict with Player's TileCollisionChecker
+  - The replace_all parameter in Edit can have unexpected side effects on similar string patterns
+  - WeaponEnemyCollision.sourceType distinguishes 'SWORD' vs 'PROJECTILE' collisions for proper handling
+  - Projectile's shouldDestroy() is called every frame during update, checks multiple despawn conditions
+  - addProjectile() method allows injecting pre-configured projectiles with custom collision checkers
+  - All quality checks pass: typecheck, lint, test (1731 tests total)
+---
+
+## 2026-02-03 21:25 CST - IMPL-037
+- **What was implemented**: B-button item system with boomerang
+- **Files created**:
+  - src/entities/Boomerang.ts - Boomerang projectile that travels forward then returns to Link
+  - src/inventory/ItemEffects.ts - Per-B-item use logic (boomerang, bombs, arrows, candle, etc.)
+  - tests/entities/Boomerang.test.ts - 31 tests for Boomerang behavior
+  - tests/inventory/ItemEffects.test.ts - 29 tests for ItemEffects
+- **Files modified**:
+  - src/types.ts - Added 'BOOMERANG' to ProjectileType union
+  - src/constants.ts - Added BOOMERANG_SPEED, MAGIC_BOOMERANG_SPEED, and PROJECTILE_SPEEDS entries
+  - src/entities/index.ts - Added Boomerang exports
+  - src/inventory/index.ts - Added ItemEffects exports (useBItem, canUseBItem, types)
+  - src/combat/CollisionDetection.ts - Added checkBoomerangEnemyCollisions() method and BoomerangEnemyCollision type
+  - src/main.ts - Added B-button handling, activeBoomerang tracking, boomerang collision/stun processing
+- **Features implemented**:
+  - B button uses currently equipped B-item (selected in pause screen)
+  - Boomerang travels 5 tiles forward then returns to Link's position
+  - Wood boomerang speed: 2.5px/frame, Magic boomerang: 3.5px/frame
+  - Boomerang stuns boomerangStunnable enemies for 60 frames (BOOMERANG_STUN_FRAMES)
+  - Only one boomerang can exist at a time (activeBoomerang tracking)
+  - Boomerang starts returning when hitting enemy or reaching max range
+  - Boomerang collected when it returns to player position
+  - Animation uses flip X/Y to create rotation effect
+  - ItemEffects.ts provides useBItem() for all B-item types with spawn positions
+  - Boomerang cleared on screen transitions, room transitions, and respawn
+- **Learnings for future iterations:**
+  - When implementing ProjectileEntity, must include shouldDestroy() method
+  - Avoid duplicate interface names across files that are barrel-exported (renamed PlayerPositionProvider to BoomerangPlayerProvider)
+  - When comparing objects of different concrete types that implement same interface, use `as unknown` cast
+  - Boomerang is unique: doesn't damage enemies, only stuns; doesn't destroy on hit, returns to player
+  - B-item use requires both having the item AND the ability to spawn projectile (only one active)
+  - All quality checks pass: typecheck, lint, test (1791 tests total, +60 new)
+---
+
+## 2026-02-03 21:35 CST - IMPL-038
+- **What was implemented**: Additional B-items (bombs, candle)
+- **Files created**:
+  - src/entities/Bomb.ts - Bomb entity with fuse countdown, explosion state, blast radius collision
+  - src/entities/CandleFlame.ts - Flame projectile with travel and burn states, tile collision/burn support
+  - tests/entities/Bomb.test.ts - 37 tests for Bomb behavior
+  - tests/entities/CandleFlame.test.ts - 35 tests for CandleFlame behavior
+- **Files modified**:
+  - src/entities/index.ts - Added Bomb and CandleFlame exports
+  - src/constants.ts - Added CANDLE_FLAME constants and CANDLE_FLAME to PROJECTILE_SPEEDS
+  - src/combat/CollisionDetection.ts - Added BombEnemyCollision interface and checkBombEnemyCollisions() method
+  - src/main.ts - Added bomb/candle integration with B-button, tracking, collision processing, blue candle restriction
+- **Features implemented**:
+  - Bomb: 60-frame fuse countdown, 8px blast radius, 4 damage (BOMB_DAMAGE constant)
+  - Bomb state machine: FUSE → EXPLODING → DONE
+  - Bomb getBlastHitbox() returns expanded hitbox during explosion
+  - Bomb markDamageDealt() prevents double damage application
+  - Multiple active bombs supported (activeBombs Set)
+  - CandleFlame: 4 tile range at 2.0 px/frame speed
+  - CandleFlame state machine: TRAVELING → BURNING → DONE
+  - CandleFlame collision checker supports detecting burnable tiles (bushes)
+  - Blue candle once-per-screen restriction via usedBlueCandleThisScreen flag
+  - Red candle has no per-screen limit (candleType === 'red')
+  - Bomb counter decrement via existing useBomb() in ItemEffects.ts
+  - Item switching already works on pause screen (from IMPL-027)
+- **Learnings for future iterations:**
+  - Bomb explosion uses Set<Bomb> for tracking multiple active bombs
+  - Blue candle restriction resets on screen transitions, dungeon room transitions, and respawn
+  - Bomb deals damage once per explosion via hasDealtDamage flag
+  - CandleFlame uses FlameCollisionChecker interface for detecting burnable tiles
+  - Explosion sprite uses death_puff animation as placeholder
+  - Candle flame uses projectile_fireball sprite with flip animation
+  - All quality checks pass: typecheck, lint, test (1863 tests total, +72 new)
+---
+
+## 2026-02-03 21:45 CST - IMPL-039
+- **What was implemented**: Cave rooms and NPCs system
+- **Files created**:
+  - src/data/caveData.ts - Cave room definitions with 6 caves (sword cave, hint cave, 3 shops, boomerang cave)
+  - src/world/CaveManager.ts - Cave state tracking, NPC interaction, and shop functionality
+- **Files modified**:
+  - src/assets/AssetGenerator.ts - Added cave tiles (floor, wall, pillar, fire) and NPC sprites (old man, merchant, old woman)
+  - src/rendering/TileRenderer.ts - Added CAVE_TILE_MAP and context-based rendering ('overworld'|'dungeon'|'cave')
+  - src/rendering/Renderer.ts - Added WorldContext type for context-based tile rendering
+  - src/main.ts - Integrated cave entry/exit, handleCaveGameplay, NPC interaction, shop mechanics
+  - src/world/index.ts - Added CaveManager exports
+  - src/data/index.ts - Added caveData export
+  - tests/rendering/TileRenderer.test.ts - Updated tests for new context-based API
+- **Features implemented**:
+  - Cave entry via overworld stair tiles with destinationType: 'CAVE'
+  - Cave exit via stairs in cave (same as dungeon exit pattern)
+  - NPC dialogue display box with multi-line text support
+  - Old man gives sword in starting cave ("IT'S DANGEROUS TO GO ALONE! TAKE THIS.")
+  - Shop system with cursor navigation (left/right arrows)
+  - Shop purchase mechanics with rupee checking
+  - Multiple shop caves: basic shop (shield, candle, bombs), expensive shop (ring, heart container, food), arrow shop (bow, arrows, keys)
+  - CaveManager singleton with enterCave/exitCave, isOnExitStairs, getNpcInteraction, shop methods
+  - resetCaveManager added to game reset flow (new game, continue from save)
+- **Learnings for future iterations:**
+  - TileRenderer now uses 'overworld'|'dungeon'|'cave' context strings instead of boolean isDungeon
+  - Cave tiles use IDs 20-23 (floor, wall, pillar, fire) to avoid conflicts with overworld/dungeon tiles
+  - WorldContext in Renderer.ts provides type-safe context for render frames
+  - NPC sprite keys follow pattern: 'npc_old_man', 'npc_merchant', 'npc_old_woman'
+  - Shop cursor uses selected slot index and moves with left/right arrow keys
+  - Cave items are tracked per-cave by caveId in collectedCaveItems Set
+  - All quality checks pass: typecheck, lint, test (1864 tests total, +1 new)
+---
+
+## 2026-02-03 21:47 CST - IMPL-040
+- **What was implemented**: Final polish pass and verification
+- **Verification results**:
+  - TypeScript typecheck: ✅ Passes (npm run typecheck - no errors)
+  - ESLint: ✅ Passes (npm run lint - no errors)
+  - Test suite: ✅ All 1864 tests pass (npm run test)
+  - Production build: ✅ Builds successfully (dist/ output with 195KB JS bundle)
+  - Dev server: ✅ Starts without errors
+- **Summary of completed features**:
+  - Full game bootstrap with title screen, file select, pause screen, continue screen
+  - Player movement, collision, sword attack, sword beam at full health
+  - Enemy system with 7 enemy variants (Octorok, Tektite, Moblin, Keese)
+  - Dungeon 1 with 9 rooms, locked/shutter doors, Aquamentus boss
+  - Triforce collection and dungeon progression tracking
+  - B-item system: boomerang (stuns enemies), bombs (explosion damage), candle (flame projectile)
+  - Cave system with NPC dialogue and shops
+  - Save/load system with 3 slots via localStorage
+  - Audio system with SFX (sword, hits, pickups, death)
+  - HUD with hearts, counters, minimap
+  - Item drops from enemies (hearts, rupees, bombs, keys)
+- **Learnings for future iterations:**
+  - The codebase follows consistent patterns: singleton managers, factory registration, state machines
+  - TileRenderer uses context-based rendering ('overworld'|'dungeon'|'cave')
+  - Screen classes follow update()/render() pattern with data interfaces
+  - Entity system uses type guards (isEnemy, isProjectile, isItem) for safe type narrowing
+---
