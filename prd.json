@@ -1,158 +1,336 @@
 {
-  "project": "GBC 2bpp Sprite Loader – Oracle of Seasons/Ages Characters",
-  "branchName": "ralph/sprite-loader",
-  "description": "Parse GBC 2bpp binary tile data from .bin sprite files and render them as HTMLCanvasElement sprites, registered in the existing asset system. Sprites are loaded and available in the map but NOT wired into gameplay.",
+  "project": "NES Link Sprite Implementation – Pixel-Accurate Character Art",
+  "branchName": "claude/create-prd-json-25Dhg",
+  "description": "Replace procedural placeholder sprites with pixel-accurate NES Zelda Link sprites. Defines all Link movement, combat, item-use, and projectile frames as indexed-color pixel data rendered to HTMLCanvasElement, matching the original NES sprite sheet reference.",
   "goal": {
-    "ultimate": "Load 9 Oracle of Seasons/Ages character sprites from GBC 2bpp .bin files, compose 16x16 character frames, and register them in GeneratedAssets.sprites so they are available for rendering",
+    "ultimate": "Implement all Link character sprites from the NES Zelda sprite sheet: basic movement (4 dir × 2 frames), item use (4 dir), item pickup (2 poses), magical shield (4 dir × 2 frames), sword attacks for 3 sword types (4 dir × ~4 frames each), magical rod (4 dir), weapon/projectile sprites (arrows, boomerang, sword beams, bombs, candle flame, rod beam), and hurt-state palette cycling (4 color variants).",
     "constraints": [
-      "No copyrighted assets – sprites are MIT licensed from Dinopony/oracles-sprites",
-      "Sprites loaded async, must not block game boot",
-      "Do NOT wire sprites into gameplay or replace existing placeholder sprites",
-      "Must pass all existing quality checks (typecheck, lint, test)"
+      "Sprites are 16×16 pixels (matching PLAYER_SPRITE_WIDTH/HEIGHT in constants.ts)",
+      "Must use NES-authentic color palette (green tunic, tan skin, brown hair, dark outline)",
+      "Must pass all existing quality checks (typecheck, lint, test)",
+      "New sprites must register under existing SpriteKey values where applicable",
+      "New sprite keys for additional animations (shield, rod, sword types) extend the string map",
+      "Must not break existing animation system or rendering pipeline",
+      "Pixel data defined as indexed-color arrays, not loaded from external image files"
     ]
   },
   "context": {
-    "spriteSource": "public/sprites/oracles/*.bin (9 files, 8928 bytes each, MIT license)",
-    "spriteFormat": "GBC 2bpp tile format: each tile is 16 bytes encoding an 8x8 pixel grid with 2-bit color indices (0-3). 8928 bytes / 16 bytes per tile = 558 tiles per character.",
-    "targetPlatform": "Browser (Canvas + Web Audio)",
-    "language": "TypeScript 5.x",
+    "referenceImage": "NES Legend of Zelda Link sprite sheet showing all character frames organized by action category",
+    "spriteSize": "16×16 pixels per character frame (some weapon sprites are 8×8 or 8×16)",
+    "existingAssetSystem": "src/assets/AssetGenerator.ts – GeneratedAssets with Map<string, HTMLCanvasElement>",
+    "existingAnimations": "src/animation/AnimationData.ts – defines idle, walk, attack, knockback, death, pickup animations",
+    "existingSpriteKeys": "link_down_1/2, link_up_1/2, link_left_1/2, link_right_1/2, link_attack_down/up/left/right, sword_down/up/left/right, sword_beam",
+    "existingGbcModule": "src/assets/gbc/ – GBC 2bpp sprite loader (completed, for Oracle characters)",
+    "renderer": "src/rendering/SpriteRenderer.ts – renders sprites from assets.sprites map, supports flipX/flipY",
+    "constants": "PLAYER_SPRITE_WIDTH=16, PLAYER_SPRITE_HEIGHT=16, TILE_SIZE=16",
+    "language": "TypeScript 5.x (strict mode with noUncheckedIndexedAccess)",
     "bundler": "Vite",
-    "testFramework": "Vitest",
-    "assetSystem": "src/assets/AssetGenerator.ts – GeneratedAssets interface (line 169), SpriteKey type (line 77), createCanvasWithContext pattern (line 180)",
-    "assetBarrel": "src/assets/index.ts – barrel exports to extend",
-    "mainEntry": "src/main.ts:151 – where generateGameAssets() is called; async load goes after",
-    "spriteRenderer": "src/rendering/SpriteRenderer.ts:45 – uses assets.sprites.get(spriteKey as SpriteKey), already works with widened map type"
+    "testFramework": "Vitest with globals enabled"
+  },
+  "spriteSheetReference": {
+    "basicMovement": {
+      "description": "Link walking in 4 directions, 2 frames each. Standard green tunic, no weapon drawn.",
+      "frames": ["walk_down_1", "walk_down_2", "walk_left_1", "walk_left_2", "walk_right_1", "walk_right_2", "walk_up_1", "walk_up_2"],
+      "size": "16×16",
+      "existingKeys": ["link_down_1", "link_down_2", "link_up_1", "link_up_2", "link_left_1", "link_left_2", "link_right_1", "link_right_2"]
+    },
+    "useItemWeapon": {
+      "description": "Link using a secondary item/weapon (B-button) in 4 directions. Arms extended holding item.",
+      "frames": ["use_item_down", "use_item_left", "use_item_right", "use_item_up"],
+      "size": "16×16",
+      "newKeys": ["link_use_item_down", "link_use_item_left", "link_use_item_right", "link_use_item_up"]
+    },
+    "pickUpItem": {
+      "description": "Link holding item overhead. Frame 1: one-hand hold (small items like keys, rupees). Frame 2: two-hand hold (major items like Triforce, Heart Container).",
+      "frames": ["pickup_one_hand", "pickup_two_hand"],
+      "size": "16×16",
+      "newKeys": ["link_pickup_one_hand", "link_pickup_two_hand"]
+    },
+    "magicalShield": {
+      "description": "Link walking with the Magical Shield (larger shield covering more of body). 4 directions × 2 frames.",
+      "frames": ["shield_down_1", "shield_down_2", "shield_left_1", "shield_left_2", "shield_right_1", "shield_right_2", "shield_up_1", "shield_up_2"],
+      "size": "16×16",
+      "newKeys": ["link_shield_down_1", "link_shield_down_2", "link_shield_left_1", "link_shield_left_2", "link_shield_right_1", "link_shield_right_2", "link_shield_up_1", "link_shield_up_2"]
+    },
+    "woodenSword": {
+      "description": "Link attacking with the Wooden Sword. Each direction has ~4 animation frames showing the swing: pre-swing, mid-swing, full extension, recovery. The sword sprite is rendered as a separate element offset from Link's body.",
+      "directionsAndFrames": {
+        "down": ["ws_attack_down_1", "ws_attack_down_2", "ws_attack_down_3", "ws_attack_down_4"],
+        "left": ["ws_attack_left_1", "ws_attack_left_2", "ws_attack_left_3", "ws_attack_left_4"],
+        "right": ["ws_attack_right_1", "ws_attack_right_2", "ws_attack_right_3", "ws_attack_right_4"],
+        "up": ["ws_attack_up_1", "ws_attack_up_2", "ws_attack_up_3", "ws_attack_up_4"]
+      },
+      "size": "16×16 (Link body) + 8×16 or 16×8 (sword)",
+      "swordColor": "Brown handle with gray blade"
+    },
+    "whiteSword": {
+      "description": "Same attack animation structure as Wooden Sword but with a white/silver blade.",
+      "swordColor": "Brown handle with white/blue blade"
+    },
+    "magicalSword": {
+      "description": "Same attack animation structure as Wooden Sword but with the Magical Sword (white blade with colored beam).",
+      "swordColor": "Brown handle with white blade, emits sword beam at full health"
+    },
+    "magicalRod": {
+      "description": "Link using the Magical Rod in 4 directions. Similar animation to sword but with a rod (thin blue staff). Rod tip emits a magic projectile.",
+      "directionsAndFrames": {
+        "down": ["rod_attack_down_1", "rod_attack_down_2", "rod_attack_down_3", "rod_attack_down_4"],
+        "left": ["rod_attack_left_1", "rod_attack_left_2", "rod_attack_left_3", "rod_attack_left_4"],
+        "right": ["rod_attack_right_1", "rod_attack_right_2", "rod_attack_right_3", "rod_attack_right_4"],
+        "up": ["rod_attack_up_1", "rod_attack_up_2", "rod_attack_up_3", "rod_attack_up_4"]
+      },
+      "size": "16×16 (Link body) + 8×16 or 16×8 (rod)",
+      "rodColor": "Blue staff with blue orb tip"
+    },
+    "otherWeaponsItems": {
+      "description": "Standalone weapon and projectile sprites shown at bottom of sprite sheet.",
+      "sprites": {
+        "arrow_up": { "size": "8×16", "description": "Arrow pointing up" },
+        "arrow_down": { "size": "8×16", "description": "Arrow pointing down" },
+        "arrow_left": { "size": "16×8", "description": "Arrow pointing left" },
+        "arrow_right": { "size": "16×8", "description": "Arrow pointing right" },
+        "boomerang_1": { "size": "8×8", "description": "Boomerang rotation frame 1" },
+        "boomerang_2": { "size": "8×8", "description": "Boomerang rotation frame 2" },
+        "boomerang_3": { "size": "8×8", "description": "Boomerang rotation frame 3" },
+        "boomerang_4": { "size": "8×8", "description": "Boomerang rotation frame 4" },
+        "bomb_item": { "size": "8×16", "description": "Bomb sprite (static, before explosion)" },
+        "candle_flame": { "size": "8×8", "description": "Candle flame projectile (red/orange)" },
+        "rod_projectile": { "size": "8×8", "description": "Magical rod projectile (blue orb)" },
+        "sword_beam_1": { "size": "8×8", "description": "Sword beam expanding ring frame 1" },
+        "sword_beam_2": { "size": "8×8", "description": "Sword beam expanding ring frame 2" },
+        "sword_beam_3": { "size": "8×8", "description": "Sword beam expanding ring frame 3" },
+        "sword_beam_4": { "size": "8×8", "description": "Sword beam expanding ring frame 4" }
+      }
+    },
+    "hurtColorPalettes": {
+      "description": "Link's damage invincibility uses rapid palette cycling through 4 color variants. The sprite sheet shows these as: Palette 1 (normal green tunic), Palette 2 (blue/dark), Palette 3 (red/brown), Palette 4 (gray/white). Cycle order: 1→2→3→4→1 repeating every 4 frames during invincibility.",
+      "palettes": {
+        "normal": "Green tunic (#228B22), tan skin (#F5DEB3), brown hair (#8B4513), dark outline (#1A1A1A)",
+        "hurt_blue": "Blue tunic (#4169E1), pale skin (#B0C4DE), dark hair (#191970), dark outline (#1A1A1A)",
+        "hurt_red": "Red tunic (#CD5C5C), tan skin (#F5DEB3), dark red hair (#8B0000), dark outline (#1A1A1A)",
+        "hurt_white": "White tunic (#C0C0C0), light skin (#FFFFFF), gray hair (#808080), dark outline (#1A1A1A)"
+      }
+    }
   },
   "userStories": [
     {
-      "id": "SPRITE-001",
-      "title": "Copy .bin files to public/sprites/oracles/",
-      "description": "Ensure all 9 GBC sprite .bin files and the LICENSE file are present in public/sprites/oracles/. These are static assets served by Vite's public directory.",
+      "id": "NES-001",
+      "title": "NES sprite palette and pixel renderer module",
+      "description": "As a developer, I need an NES sprite palette system and a pixel data renderer so that I can define sprites as compact indexed-color arrays and render them to HTMLCanvasElement. This is the foundation for all subsequent sprite stories.",
       "acceptanceCriteria": [
-        "public/sprites/oracles/ contains 9 .bin files: ganondorf.bin, goron.bin, marin.bin, matty.bin, piratian.bin, subrosian.bin, tokay.bin, vulpera.bin, zoroark.bin",
-        "Each .bin file is exactly 8928 bytes",
-        "public/sprites/oracles/LICENSE is present (MIT license from Dinopony)",
-        "Files are accessible via Vite dev server at /sprites/oracles/*.bin"
+        "src/assets/nes/NesPalette.ts exports NES Zelda color palettes: LINK_PALETTE (normal), LINK_HURT_BLUE, LINK_HURT_RED, LINK_HURT_WHITE, SWORD_PALETTE, ROD_PALETTE",
+        "Each palette is a tuple of RGBA colors indexed 0-N where index 0 is transparent",
+        "LINK_PALETTE contains: transparent, outline dark (#1A1A1A), tunic green (#228B22), skin tan (#DEB887), hair brown (#8B4513), tunic dark (#006400), shield orange (#CD853F), hat light (#32CD32)",
+        "src/assets/nes/NesPixelRenderer.ts exports renderPixelSprite(pixelData: number[], width: number, height: number, palette: RGBA[]) → HTMLCanvasElement",
+        "renderPixelSprite creates a canvas of the given dimensions and sets each pixel according to palette[pixelData[i]]",
+        "Index 0 pixels are fully transparent (alpha = 0)",
+        "Unit tests in tests/assets/nes/NesPalette.test.ts verify palette definitions (correct number of colors, index 0 transparent)",
+        "Unit tests in tests/assets/nes/NesPixelRenderer.test.ts verify canvas dimensions and correct pixel color mapping",
+        "npm run typecheck passes",
+        "npm run test passes"
       ],
       "priority": 1,
-      "passes": true
+      "passes": false,
+      "notes": "Model the module after src/assets/gbc/ pattern. Use createImageData + putImageData for pixel-level rendering (same approach as GbcPalette.ts renderTileToCanvas)."
     },
     {
-      "id": "SPRITE-002",
-      "title": "GBC 2bpp tile parser",
-      "description": "Implement a parser that decodes GBC 2bpp tile data. Each tile is 16 bytes encoding an 8x8 pixel grid. For each row (2 bytes), bit N of byte 0 is the low bit and bit N of byte 1 is the high bit of the color index (0-3) for pixel N. The parser should decode a single tile (16 bytes → Uint8Array of 64 color indices) and parse a full buffer into an array of tiles.",
+      "id": "NES-002",
+      "title": "Link basic movement sprites (walk 4 directions × 2 frames)",
+      "description": "As a player, I want to see a pixel-accurate Link character when walking, replacing the colored rectangle placeholders. Define the 8 walk frames as indexed-color pixel arrays matching the 'Basic movement' section of the NES sprite sheet reference.",
       "acceptanceCriteria": [
-        "src/assets/gbc/GbcTileParser.ts exists with decodeTile(data: Uint8Array, offset: number) → Uint8Array(64)",
-        "decodeTile correctly maps 2bpp encoding: for each row, byte0 bit N = low bit, byte1 bit N = high bit of pixel (7-N) color index",
-        "parseTileBuffer(buffer: ArrayBuffer) → Uint8Array[] returns array of 558 tiles for an 8928-byte buffer",
-        "Unit tests in tests/assets/gbc/GbcTileParser.test.ts verify known bit patterns: all-zero bytes → 64 zeros, 0xFF 0x00 → all 1s, 0x00 0xFF → all 2s, 0xFF 0xFF → all 3s",
-        "Edge case: buffer size not divisible by 16 throws descriptive error",
+        "src/assets/nes/LinkMovementSprites.ts exports LINK_WALK_SPRITES: Record<string, number[]> with keys: walk_down_1, walk_down_2, walk_up_1, walk_up_2, walk_left_1, walk_left_2, walk_right_1, walk_right_2",
+        "Each pixel array is 256 entries (16×16) of palette indices referencing LINK_PALETTE",
+        "Sprites depict a recognizable Link character: green tunic/hat, tan skin, brown hair, facing the correct direction",
+        "walk_right frames can be horizontally flipped versions of walk_left (store one direction, flip at render time) OR defined separately",
+        "Walk frame 1 vs frame 2 show leg animation (alternating step positions)",
+        "Down-facing sprites show Link's face with eyes; up-facing sprites show back of head/hat",
+        "Unit tests in tests/assets/nes/LinkMovementSprites.test.ts verify: all 8 keys present, each array is length 256, all indices within LINK_PALETTE range",
+        "npm run typecheck passes",
         "npm run test passes"
       ],
       "priority": 2,
-      "passes": true
+      "passes": false,
+      "notes": "Reference the 'Basic movement' row of the sprite sheet. Each 16×16 sprite has index 0 for transparent border pixels. The NES Zelda Link is approximately 12×15 pixels of actual character within the 16×16 bounding box."
     },
     {
-      "id": "SPRITE-003",
-      "title": "Color palette system",
-      "description": "Implement a color palette system that maps 2-bit color indices (0-3) to RGBA values. Index 0 is always transparent. Provide a default green palette matching GBC style, plus red and blue presets. Include a renderTileToCanvas() function that takes a decoded tile (Uint8Array of 64 indices) and a palette, and renders it to an 8x8 HTMLCanvasElement.",
+      "id": "NES-003",
+      "title": "Link sword attack sprites (Wooden Sword, all 4 directions)",
+      "description": "As a player, I want to see Link swing a sword when attacking, with distinct animation frames for the swing arc. Define attack frames for the Wooden Sword matching the 'Wooden Sword' section of the reference sheet.",
       "acceptanceCriteria": [
-        "src/assets/gbc/GbcPalette.ts exports GbcPalette type as [RGBA, RGBA, RGBA, RGBA] where RGBA is [r,g,b,a]",
-        "DEFAULT_PALETTE: index 0 = transparent (alpha 0), indices 1-3 = green shades matching GBC aesthetic",
-        "RED_PALETTE and BLUE_PALETTE presets exported",
-        "renderTileToCanvas(tile: Uint8Array, palette: GbcPalette) → HTMLCanvasElement (8x8 canvas)",
-        "Index 0 pixels are fully transparent (alpha = 0)",
-        "Unit tests in tests/assets/gbc/GbcPalette.test.ts verify palette mapping and transparency",
+        "src/assets/nes/LinkSwordSprites.ts exports LINK_SWORD_ATTACK_SPRITES with keys for each direction: attack_down_1 through attack_down_4, attack_up_1 through attack_up_4, attack_left_1 through attack_left_4, attack_right_1 through attack_right_4",
+        "Each sprite is a 16×16 indexed-color array showing Link mid-swing with the sword visible as part of the character frame",
+        "Separate sword-only sprites exported as SWORD_SPRITES with keys: sword_down, sword_up, sword_left, sword_right (8×16 vertical, 16×8 horizontal)",
+        "Sword sprites use SWORD_PALETTE (brown handle, gray/silver blade)",
+        "Frame 1: pre-swing (arm raised), Frame 2: mid-swing (sword at angle), Frame 3: full extension (sword straight out), Frame 4: recovery (returning to idle)",
+        "Unit tests verify: all 16 attack keys + 4 sword keys present, correct array lengths (256 for character, 128 for sword), indices in palette range",
+        "npm run typecheck passes",
         "npm run test passes"
       ],
       "priority": 3,
-      "passes": true
+      "passes": false,
+      "notes": "The sword hitbox is active during frames 2-3 (matching SWORD_ATTACK_DURATIONS in AnimationData.ts). Sword sprites are rendered as separate entities offset from Link's position."
     },
     {
-      "id": "SPRITE-004",
-      "title": "Sprite frame composer",
-      "description": "Implement a composer that assembles 4 tiles in a 2x2 grid into a 16x16 character sprite canvas. Also create a data table mapping animation frame names to tile indices within the 558-tile set. At minimum, define walk animations for 4 directions x 2 frames.",
+      "id": "NES-004",
+      "title": "Link item use, pickup, and magical shield sprites",
+      "description": "As a player, I want to see Link using items, picking up items, and walking with the Magical Shield. Define sprites for 'Use item/weapon' (4 dir), 'Pick up item' (2 poses), and 'Magical Shield' (4 dir × 2 frames) sections of the reference sheet.",
       "acceptanceCriteria": [
-        "src/assets/gbc/SpriteFrameComposer.ts exports composeFrame(tiles: Uint8Array[], tileIndices: [number, number, number, number], palette: GbcPalette) → HTMLCanvasElement (16x16)",
-        "Tiles are arranged: [topLeft, topRight, bottomLeft, bottomRight] in the 2x2 grid",
-        "src/assets/gbc/SpriteTileMapping.ts exports SPRITE_FRAME_MAP: Record<string, [number, number, number, number]>",
-        "Frame map includes at least: walk_down_1, walk_down_2, walk_up_1, walk_up_2, walk_left_1, walk_left_2, walk_right_1, walk_right_2",
-        "Unit tests in tests/assets/gbc/SpriteFrameComposer.test.ts verify 16x16 output dimensions and correct tile placement",
+        "src/assets/nes/LinkItemSprites.ts exports LINK_USE_ITEM_SPRITES with keys: use_item_down, use_item_up, use_item_left, use_item_right (16×16 each)",
+        "Use-item sprites show Link with arms extended in the given direction, distinct from walk and attack poses",
+        "LINK_PICKUP_SPRITES exported with keys: pickup_one_hand, pickup_two_hand (16×16 each)",
+        "pickup_one_hand shows Link facing down holding a small item above head with one arm",
+        "pickup_two_hand shows Link facing down holding a large item above head with both arms raised",
+        "LINK_SHIELD_SPRITES exported with keys: shield_down_1, shield_down_2, shield_up_1, shield_up_2, shield_left_1, shield_left_2, shield_right_1, shield_right_2 (16×16 each)",
+        "Shield sprites are visually distinct from basic walk: the Magical Shield is larger and more prominent on Link's body",
+        "Unit tests verify all keys present, array lengths correct, palette indices valid",
+        "npm run typecheck passes",
         "npm run test passes"
       ],
       "priority": 4,
-      "passes": true
+      "passes": false,
+      "notes": "The Magical Shield is an upgrade from the standard small shield. When the player obtains it, shield_* sprites replace the normal walk sprites for directional movement."
     },
     {
-      "id": "SPRITE-005",
-      "title": "Async sprite sheet loader",
-      "description": "Implement an async loader that fetches .bin files, parses tiles, composes frames, and returns a Map of named HTMLCanvasElement sprites. Load all 9 characters in parallel. Keys follow the pattern oracle_{characterName}_{frameName} (e.g. oracle_ganondorf_walk_down_1). Handle fetch errors gracefully (log warning, skip character).",
+      "id": "NES-005",
+      "title": "Upgraded weapon sprites (White Sword, Magical Sword, Magical Rod)",
+      "description": "As a player, I want visually distinct attack animations when using upgraded weapons. Define attack frame sprites for the White Sword, Magical Sword, and Magical Rod matching the reference sheet sections.",
       "acceptanceCriteria": [
-        "src/assets/gbc/GbcSpriteLoader.ts exports loadOracleSprites() → Promise<Map<string, HTMLCanvasElement>>",
-        "Fetches all 9 .bin files from /sprites/oracles/ in parallel using Promise.allSettled",
-        "For each character, composes all frames defined in SPRITE_FRAME_MAP",
-        "Map keys follow pattern: oracle_{charName}_{frameName} e.g. oracle_ganondorf_walk_down_1",
-        "If a fetch fails, logs a console.warn and continues loading other characters",
-        "Returns a Map with (9 characters × number of frames) entries on success",
-        "Unit tests in tests/assets/gbc/GbcSpriteLoader.test.ts mock fetch and verify map key format and canvas dimensions",
+        "src/assets/nes/LinkWeaponSprites.ts exports WHITE_SWORD_ATTACK_SPRITES and MAGICAL_SWORD_ATTACK_SPRITES with same key structure as Wooden Sword (attack_{dir}_{1-4})",
+        "White Sword blade pixels use a white/light blue color; Magical Sword uses white with a glow effect (brighter highlight)",
+        "WHITE_SWORD_SPRITES and MAGICAL_SWORD_SPRITES export standalone sword sprites (same structure as SWORD_SPRITES but different blade colors)",
+        "LINK_ROD_ATTACK_SPRITES exports rod attack frames: rod_attack_{dir}_{1-4} for all 4 directions",
+        "ROD_SPRITES exports standalone rod sprites: rod_down, rod_up, rod_left, rod_right (blue staff with orb tip)",
+        "Rod sprites are visually distinct from swords: thinner, blue-colored, with a circular orb at the tip",
+        "Unit tests verify all keys present, array lengths correct, palette indices valid",
+        "npm run typecheck passes",
         "npm run test passes"
       ],
       "priority": 5,
-      "passes": true
+      "passes": false,
+      "notes": "The 3 sword types share the same attack animation structure but differ in blade color. Wooden = gray, White = white/silver, Magical = white with blue tint. The Magical Rod uses ROD_PALETTE (blue shades)."
     },
     {
-      "id": "SPRITE-006",
-      "title": "Integration with asset system",
-      "description": "Widen the GeneratedAssets.sprites type from Map<SpriteKey, HTMLCanvasElement> to Map<string, HTMLCanvasElement> so oracle sprites can coexist with procedural placeholders. Add a loadOracleSprites() call in main.ts that runs after generateGameAssets(), fire-and-forget (no await blocking boot). Merge loaded sprites into the existing assets.sprites map. Log the count of loaded sprites to console.",
+      "id": "NES-006",
+      "title": "Weapon projectile and item sprites",
+      "description": "As a player, I want to see authentic weapon projectiles and items. Define pixel data for all sprites in the 'Other Weapons/Items' section: arrows, boomerang rotation frames, sword beam ring animation, bomb, candle flame, and rod projectile.",
       "acceptanceCriteria": [
-        "GeneratedAssets.sprites type changed from Map<SpriteKey, HTMLCanvasElement> to Map<string, HTMLCanvasElement> in AssetGenerator.ts",
-        "All existing code that uses SpriteKey continues to compile (SpriteKey values are strings, Map<string,...> accepts them)",
-        "src/assets/index.ts exports a loadOracleSprites() function (or re-exports from gbc module)",
-        "main.ts calls loadOracleSprites() after generateGameAssets() in a fire-and-forget pattern (no await blocking init)",
-        "Loaded oracle sprites are merged into the existing assets.sprites Map",
-        "Console.log confirms sprite loading count (e.g. 'Loaded 72 oracle sprites')",
+        "src/assets/nes/ProjectileSprites.ts exports all projectile/weapon pixel data",
+        "ARROW_SPRITES: arrow_up, arrow_down (8×16 = 128 entries), arrow_left, arrow_right (16×8 = 128 entries) — pointed tip with fletching",
+        "BOOMERANG_SPRITES: boomerang_1 through boomerang_4 (8×8 = 64 entries) — L-shaped boomerang in 4 rotation angles",
+        "SWORD_BEAM_SPRITES: sword_beam_1 through sword_beam_4 (8×8 = 64 entries) — expanding arc/ring pattern matching the reference sheet's circular wave projectile",
+        "BOMB_SPRITE: bomb (8×16 = 128 entries) — round bomb body with fuse",
+        "FLAME_SPRITE: candle_flame (8×8 = 64 entries) — red/orange flame",
+        "ROD_PROJECTILE_SPRITE: rod_projectile (8×8 = 64 entries) — blue magic orb",
+        "Unit tests verify all keys present, correct array dimensions, palette indices valid",
+        "npm run typecheck passes",
+        "npm run test passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Sword beam sprites show the expanding ring/arc pattern visible in the reference sheet. The beam starts small and expands as it travels. Boomerang rotates through 4 frames. Arrows have pointed tips with brown shaft."
+    },
+    {
+      "id": "NES-007",
+      "title": "Hurt palette cycling system",
+      "description": "As a player, I want Link to flash through different colors when taking damage, matching the NES behavior. Implement the 4-palette cycling system shown in the 'Hurt Colors Example' section of the reference sheet.",
+      "acceptanceCriteria": [
+        "src/assets/nes/HurtPaletteSystem.ts exports createHurtVariant(basePixelData: number[], basePalette: RGBA[], hurtPalette: RGBA[]) → HTMLCanvasElement",
+        "createHurtVariant re-renders the sprite pixel data with the hurt palette substituted",
+        "Exports generateHurtSprites(spriteKey: string, basePixelData: number[], width: number, height: number) → Map<string, HTMLCanvasElement> that creates 3 hurt variants (blue, red, white) for a given sprite",
+        "Hurt variant keys follow pattern: {spriteKey}_hurt_blue, {spriteKey}_hurt_red, {spriteKey}_hurt_white",
+        "The 4 palettes cycle as: normal(frame 0) → blue(frame 1) → red(frame 2) → white(frame 3) → repeat, matching the Hurt Colors Example numbered 1→2→3→4→1",
+        "Exports getHurtSpriteKey(baseSpriteKey: string, frameCounter: number) → string that returns the correct hurt variant key based on cycling through the 4 palettes every INVINCIBILITY_FLASH_INTERVAL frames",
+        "Unit tests verify: hurt variants created with correct dimensions, palette cycling returns correct keys per frame counter, 3 variants generated per base sprite",
+        "npm run typecheck passes",
+        "npm run test passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "The NES cycles Link through 4 color palettes during invincibility frames. INVINCIBILITY_FLASH_INTERVAL is 4 frames (from constants.ts). This replaces the simple flash-on/flash-off approach with authentic 4-color cycling."
+    },
+    {
+      "id": "NES-008",
+      "title": "Asset system integration — replace placeholders with NES sprites",
+      "description": "As a developer, I need all NES sprites registered in the asset system so they replace the procedural placeholders. Wire the NES sprite module into AssetGenerator and update the sprite map.",
+      "acceptanceCriteria": [
+        "src/assets/nes/NesLinkSpriteLoader.ts exports loadNesLinkSprites() → Map<string, HTMLCanvasElement> that renders all pixel data arrays through NesPixelRenderer and returns a complete sprite map",
+        "Loader renders all sprites from NES-002 through NES-006 (movement, attacks, items, shield, weapons, projectiles)",
+        "Sprites registered under existing SpriteKey values where applicable (link_down_1, link_attack_down, sword_down, sword_beam, projectile_boomerang, etc.)",
+        "New sprite keys for expanded animations registered as string keys in the Map (link_use_item_down, link_shield_down_1, link_pickup_one_hand, etc.)",
+        "Hurt variants from NES-007 are generated for all 8 walk sprites and registered (link_down_1_hurt_blue, etc.)",
+        "src/assets/nes/index.ts barrel-exports all NES module public APIs",
+        "src/assets/index.ts re-exports from ./nes",
+        "Main entry (main.ts or AssetGenerator.ts) calls loadNesLinkSprites() and merges results into assets.sprites, overwriting placeholder entries",
         "npm run typecheck passes",
         "npm run lint passes",
         "npm run test passes",
-        "Game boots normally without blocking on sprite load"
+        "Game boots and displays NES sprites instead of colored rectangle placeholders"
       ],
-      "priority": 6,
-      "passes": true
+      "priority": 8,
+      "passes": false,
+      "notes": "Follow the same integration pattern as SPRITE-006 from the GBC PRD. NES sprites should overwrite the procedural placeholders for Link. Existing SpriteKey values are strings in a widened Map<string, HTMLCanvasElement>. Load synchronously (pixel data is in-memory, no fetch needed) during generateGameAssets()."
     },
     {
-      "id": "SPRITE-007",
-      "title": "Module organization and polish",
-      "description": "Create barrel exports, add CLAUDE.md documentation for the gbc module, and ensure all quality checks pass cleanly.",
+      "id": "NES-009",
+      "title": "Animation data updates for new weapon and shield states",
+      "description": "As a player, I want the game to use the correct animation sequences when I have upgraded weapons or the Magical Shield. Update AnimationData.ts with new animation definitions for all weapon types and shield state.",
       "acceptanceCriteria": [
-        "src/assets/gbc/index.ts barrel-exports all public APIs: GbcTileParser functions, GbcPalette types/constants, SpriteFrameComposer, SpriteTileMapping, GbcSpriteLoader",
-        "src/assets/index.ts re-exports from './gbc' (at minimum loadOracleSprites)",
-        "src/assets/gbc/CLAUDE.md documents the module: GBC 2bpp format, tile layout, palette system, how to add new characters",
+        "AnimationData.ts registers sword attack animations per weapon type: link_attack_{dir}_wooden, link_attack_{dir}_white, link_attack_{dir}_magical for all 4 directions",
+        "Existing link_attack_{dir} animations updated to use the 4-frame attack sprite keys (attack_{dir}_1 through attack_{dir}_4) with durations matching SWORD_ATTACK_DURATIONS",
+        "New magical rod animations registered: link_rod_attack_{dir} for all 4 directions",
+        "New item use animations registered: link_use_item_{dir} for all 4 directions",
+        "Item pickup animations updated: link_pickup_one_hand and link_pickup_two_hand as separate named animations",
+        "Magical shield walk animations registered: link_shield_walk_{dir} for all 4 directions (2-frame loop using shield sprites)",
+        "getLinkAnimationName function updated to accept weapon type and shield state parameters for correct animation lookup",
+        "All existing animation tests continue to pass",
+        "New unit tests verify: weapon-specific attack animations exist, rod animations exist, shield walk animations exist",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "The existing attack animation uses generic link_attack_{dir} sprite keys. With weapon types, the animation system needs to select the correct sprite set based on the player's current weapon. The getLinkAnimationName function should be extended but remain backwards-compatible."
+    },
+    {
+      "id": "NES-010",
+      "title": "Module organization, barrel exports, and documentation",
+      "description": "As a developer, I need the NES sprite module well-organized with barrel exports, documentation, and all quality checks passing cleanly.",
+      "acceptanceCriteria": [
+        "src/assets/nes/index.ts barrel-exports all public APIs: NesPalette, NesPixelRenderer, all sprite data modules, HurtPaletteSystem, NesLinkSpriteLoader",
+        "src/assets/nes/CLAUDE.md documents the NES sprite module: palette system, pixel data format, how to add new sprites, how to add hurt variants, integration points",
+        "All NES module source files have consistent structure: palette type imports, exported constants, JSDoc comments on public functions",
         "npm run typecheck passes with zero errors",
         "npm run lint passes with zero errors",
         "npm run test passes with all tests green",
-        "No regressions in existing game functionality"
+        "No regressions in existing game functionality (all 1911+ existing tests pass)",
+        "progress.txt updated with codebase patterns for the NES sprite module"
       ],
-      "priority": 7,
-      "passes": true
+      "priority": 10,
+      "passes": false,
+      "notes": "Follow the same module organization pattern as src/assets/gbc/. Barrel exports should re-export types with the 'type' keyword for isolatedModules compatibility."
     }
   ],
   "outOfScope": [
-    "Wiring oracle sprites into actual gameplay (player, enemies, NPCs)",
-    "Replacing existing placeholder sprites",
-    "Animation system integration (frame cycling)",
-    "Sprite palette swapping at runtime",
-    "Full 558-tile sheet rendering (only compose specific animation frames)",
-    "Sprite editor or preview tool",
-    "Non-oracle character sprites"
+    "Enemy NES sprites (Octoroks, Tektites, Moblins, Keese, bosses) — separate PRD",
+    "NPC sprites (Old Man, Merchant, Old Woman) — separate PRD",
+    "Tile/background graphics — separate PRD",
+    "HUD element sprites — separate PRD",
+    "Sound effects or music",
+    "Gameplay logic changes (weapon switching, shield upgrades are display-only here)",
+    "Loading sprites from PNG/image files (all pixel data defined in code)",
+    "Sprite editor or preview tooling"
   ],
   "definitionOfDone": [
-    "All 9 .bin files are in public/sprites/oracles/",
-    "GBC 2bpp parser correctly decodes tile data with unit tests",
-    "Color palette maps indices to RGBA with transparency on index 0",
-    "16x16 character frames composed from 2x2 tile grids",
-    "Async loader fetches and parses all 9 characters in parallel",
-    "Oracle sprites are registered in GeneratedAssets.sprites map",
-    "Game boots normally with oracle sprites loading in background",
-    "All quality checks pass (typecheck, lint, test)"
+    "NES palette system defines authentic Zelda color palettes including 4 hurt variants",
+    "All Link movement sprites (8 walk + 4 use-item + 2 pickup + 8 shield) defined as pixel data",
+    "Sword attack sprites defined for 3 weapon types (Wooden, White, Magical) × 4 directions × 4 frames",
+    "Magical Rod attack sprites defined for 4 directions × 4 frames",
+    "All weapon/projectile sprites defined (arrows, boomerang, sword beam, bomb, flame, rod beam)",
+    "Hurt palette cycling system generates color variants and cycles through them during damage",
+    "All NES sprites registered in GeneratedAssets.sprites, replacing procedural placeholders",
+    "AnimationData.ts updated with weapon-specific and shield-specific animation definitions",
+    "NES module well-organized with barrel exports and documentation",
+    "All quality checks pass (typecheck, lint, test) with zero regressions"
   ]
 }
