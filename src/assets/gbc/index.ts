@@ -16,3 +16,10 @@ export { composeFrame } from './SpriteFrameComposer';
 export { SPRITE_FRAME_MAP } from './SpriteTileMapping';
 
 export { loadOracleSprites } from './GbcSpriteLoader';
+
+export {
+  type SpriteAliasConfig,
+  LINK_ALIAS,
+  ENEMY_ALIASES,
+  ALL_ALIASES,
+} from './SpriteAliasMap';

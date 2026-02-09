@@ -124,6 +124,9 @@ class Game {
   // Blue candle once-per-screen tracking
   private usedBlueCandleThisScreen: boolean = false;
 
+  // Debug frame counter for throttled logging
+  private debugFrameCount: number = 0;
+
   constructor() {
     // Initialize core systems that don't need DOM
     this.gameStateManager = new GameStateManager();
@@ -516,10 +519,6 @@ class Game {
     // Re-register entity factories (they were cleared on reset)
     this.setupEntityFactories();
 
-    // Setup inventory - give player the wooden sword to start
-    const inventoryManager = getInventoryManager();
-    inventoryManager.addItem('WOODEN_SWORD');
-
     // Setup player
     const player = getPlayer();
     player.setCollisionChecker((hitbox) => this.worldManager.checkCollision(hitbox));
@@ -558,7 +557,7 @@ class Game {
     }
 
     // Handle attack input - if A button pressed and player can attack
-    if (input.buttons.A.justPressed && player.canAttack()) {
+    if (input.buttons.A.justPressed && player.canAttack() && inventoryManager.hasSword()) {
       player.startAttack();
 
       // Check if we should spawn a sword beam (at full HP and no active beam)
@@ -573,6 +572,13 @@ class Game {
     // Update player
     player.handleInput(input);
     player.update(1); // deltaFrame = 1 for fixed timestep
+
+    // Log Link's position (throttled to every 30 frames)
+    this.debugFrameCount++;
+    if (this.debugFrameCount % 30 === 0) {
+      const hitbox = player.getHitbox();
+      console.log(`Link pos: (${player.x.toFixed(1)}, ${player.y.toFixed(1)}) | hitbox: (${hitbox.x}, ${hitbox.y}, w:${hitbox.width}, h:${hitbox.height}) | screen: (${this.worldManager.getCurrentScreenCol()}, ${this.worldManager.getCurrentScreenRow()})`);
+    }
 
     // Update sword beam tracking - check if our tracked beam is still active
     if (this.activeSwordBeam && !this.activeSwordBeam.active) {

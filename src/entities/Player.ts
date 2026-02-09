@@ -592,7 +592,7 @@ export class Player extends BaseEntity {
     // Determine sprite key based on state and direction
     const spriteKey = this.getSpriteKey();
 
-    return [{
+    const commands: SpriteRenderCommand[] = [{
       spriteKey,
       x: this.x,
       y: this.y,
@@ -601,6 +601,48 @@ export class Player extends BaseEntity {
       priority: this.spritePriority,
       visible,
     }];
+
+    // Render sword sprite during active attack frames
+    if (this.state === 'ATTACKING' &&
+        this.attackFrame >= SWORD_HITBOX_ACTIVE_START &&
+        this.attackFrame <= SWORD_HITBOX_ACTIVE_END) {
+      const dir = this.facingDirection.toLowerCase();
+      const centerX = this.x + PLAYER_SPRITE_WIDTH / 2;
+      const centerY = this.y + PLAYER_SPRITE_HEIGHT / 2;
+
+      let swordX: number;
+      let swordY: number;
+      switch (this.facingDirection) {
+        case 'UP':
+          swordX = centerX - SWORD_HITBOX_VERTICAL_WIDTH / 2;
+          swordY = this.y - SWORD_HITBOX_VERTICAL_HEIGHT;
+          break;
+        case 'DOWN':
+          swordX = centerX - SWORD_HITBOX_VERTICAL_WIDTH / 2;
+          swordY = this.y + PLAYER_SPRITE_HEIGHT;
+          break;
+        case 'LEFT':
+          swordX = this.x - SWORD_HITBOX_HORIZONTAL_WIDTH;
+          swordY = centerY - SWORD_HITBOX_HORIZONTAL_HEIGHT / 2;
+          break;
+        case 'RIGHT':
+          swordX = this.x + PLAYER_SPRITE_WIDTH;
+          swordY = centerY - SWORD_HITBOX_HORIZONTAL_HEIGHT / 2;
+          break;
+      }
+
+      commands.push({
+        spriteKey: `sword_${dir}`,
+        x: swordX,
+        y: swordY,
+        flipX: false,
+        flipY: false,
+        priority: this.spritePriority,
+        visible,
+      });
+    }
+
+    return commands;
   }
 
   /**

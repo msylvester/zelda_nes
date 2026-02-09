@@ -249,8 +249,8 @@ describe('ENEMY_ARCHETYPES Map', () => {
     expect(ENEMY_ARCHETYPES.KEESE).toBe(KEESE);
   });
 
-  it('should have 8 archetypes (5 enemy types with variants + Aquamentus boss)', () => {
-    expect(Object.keys(ENEMY_ARCHETYPES)).toHaveLength(8);
+  it('should have 10 archetypes (5 enemy types with variants + Gel + Stalfos + Aquamentus boss)', () => {
+    expect(Object.keys(ENEMY_ARCHETYPES)).toHaveLength(10);
   });
 });
 
@@ -269,7 +269,7 @@ describe('getEnemyArchetype', () => {
 describe('getAllEnemyArchetypes', () => {
   it('should return all archetypes as array', () => {
     const all = getAllEnemyArchetypes();
-    expect(all).toHaveLength(8);
+    expect(all).toHaveLength(10);
     expect(all).toContain(OCTOROK_RED);
     expect(all).toContain(KEESE);
   });

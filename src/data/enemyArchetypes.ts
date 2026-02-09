@@ -377,6 +377,93 @@ export const KEESE: EnemyArchetype = {
   flags: DEFAULT_FLAGS,
 };
 
+// ===== GEL =====
+
+/** Movement pattern for Gel - slow, erratic random walk */
+const GEL_MOVEMENT: RandomWalkPattern = {
+  type: 'RANDOM_WALK',
+  speed: 0.5,
+  walkDuration: { min: 15, max: 30 },
+  pauseDuration: { min: 30, max: 60 },
+  axisAligned: true,
+  respectsCollision: true,
+};
+
+/**
+ * Gel (Green) - Tiny slime enemy found in dungeons
+ * Slow random walk, contact damage only, 1 HP
+ */
+export const GEL_GREEN: EnemyArchetype = {
+  id: 'GEL_GREEN',
+  name: 'Gel',
+  baseType: 'GEL' as EnemyBaseType,
+  variant: 'GREEN' as EnemyVariant,
+  hp: 1,
+  contactDamage: 1,
+  movementPattern: GEL_MOVEMENT,
+  attackPattern: CONTACT_ONLY_ATTACK,
+  spriteWidth: 8,
+  spriteHeight: 8,
+  hitbox: {
+    offsetX: 4,
+    offsetY: 4,
+    width: 8,
+    height: 8,
+  },
+  speed: 0.5,
+  vulnerabilities: DEFAULT_VULNERABILITIES,
+  spawnBehavior: 'IMMEDIATE' as SpawnBehavior,
+  countsTowardLimit: true,
+  advancesKillCounter: true,
+  boomerangStunnable: true,
+  stunDuration: 60,
+  knockbackable: true,
+  spritePriority: 1 as SpritePriority,
+  blocksMovement: false,
+  flags: DEFAULT_FLAGS,
+};
+
+// ===== STALFOS =====
+
+/** Movement pattern for Stalfos - random walk in dungeons */
+const STALFOS_MOVEMENT: RandomWalkPattern = {
+  type: 'RANDOM_WALK',
+  speed: 0.75,
+  walkDuration: { min: 30, max: 60 },
+  pauseDuration: { min: 15, max: 30 },
+  axisAligned: true,
+  respectsCollision: true,
+};
+
+/**
+ * Stalfos (Green) - Skeleton enemy found in dungeons
+ * Random walk, contact damage only, 2 HP
+ */
+export const STALFOS_GREEN: EnemyArchetype = {
+  id: 'STALFOS_GREEN',
+  name: 'Stalfos',
+  baseType: 'STALFOS' as EnemyBaseType,
+  variant: 'GREEN' as EnemyVariant,
+  hp: 2,
+  contactDamage: 1,
+  movementPattern: STALFOS_MOVEMENT,
+  attackPattern: CONTACT_ONLY_ATTACK,
+  spriteWidth: 16,
+  spriteHeight: 16,
+  hitbox: STANDARD_HITBOX,
+  speed: 0.75,
+  vulnerabilities: DEFAULT_VULNERABILITIES,
+  spawnBehavior: 'IMMEDIATE' as SpawnBehavior,
+  countsTowardLimit: true,
+  advancesKillCounter: true,
+  boomerangStunnable: true,
+  stunDuration: 60,
+  knockbackable: true,
+  spritePriority: 2 as SpritePriority,
+  blocksMovement: false,
+  flags: DEFAULT_FLAGS,
+};
+
 // ===== BOSS PATTERNS =====
 
 /** Movement pattern for Aquamentus - slow horizontal drift */
@@ -457,6 +544,8 @@ export const ENEMY_ARCHETYPES: Readonly<Record<string, EnemyArchetype>> = {
   MOBLIN_RED,
   MOBLIN_BLUE,
   KEESE,
+  GEL_GREEN,
+  STALFOS_GREEN,
   AQUAMENTUS,
 };
 

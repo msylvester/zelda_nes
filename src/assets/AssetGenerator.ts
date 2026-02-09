@@ -817,6 +817,15 @@ export class AssetGenerator {
       const key = `enemy_death_puff_${frame}` as SpriteKey;
       this.assets.sprites.set(key, canvas);
     }
+
+    // Register puff aliases under the keys Enemy.ts actually requests (puff_0..puff_3, 0-indexed)
+    for (let i = 0; i <= 3; i++) {
+      const sourceFrame = Math.min(i + 1, 3); // clamp to 3
+      const source = this.assets.sprites.get(`enemy_death_puff_${sourceFrame}` as SpriteKey);
+      if (source) {
+        this.assets.sprites.set(`puff_${i}`, source);
+      }
+    }
   }
 
   private generateProjectileSprites(): void {

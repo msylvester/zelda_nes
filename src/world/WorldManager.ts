@@ -3,6 +3,8 @@
 
 import {
   TILE_SIZE,
+  TILES_PER_ROW,
+  TILES_PER_COL,
   PLAY_AREA_WIDTH,
   PLAY_AREA_HEIGHT,
   OVERWORLD_COLS,
@@ -176,6 +178,13 @@ export class WorldManager {
 
     for (let row = topRow; row <= bottomRow; row++) {
       for (let col = leftCol; col <= rightCol; col++) {
+        // Skip out-of-bounds tiles when an adjacent screen exists,
+        // allowing the player to walk off-screen to trigger transitions
+        if (col < 0 && this.canTransitionTo(this.currentScreenCol - 1, this.currentScreenRow)) continue;
+        if (col >= TILES_PER_ROW && this.canTransitionTo(this.currentScreenCol + 1, this.currentScreenRow)) continue;
+        if (row < 0 && this.canTransitionTo(this.currentScreenCol, this.currentScreenRow - 1)) continue;
+        if (row >= TILES_PER_COL && this.canTransitionTo(this.currentScreenCol, this.currentScreenRow + 1)) continue;
+
         const collision = this.tileMap.getCollisionAt(col, row);
         if (this.isTileSolid(collision)) {
           return true;

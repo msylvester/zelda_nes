@@ -255,7 +255,7 @@ export type EnemyBaseType =
   | 'PATRA'
   | 'GANON';
 
-export type EnemyVariant = 'RED' | 'BLUE' | 'DEFAULT';
+export type EnemyVariant = 'RED' | 'BLUE' | 'GREEN' | 'DEFAULT';
 
 export interface EnemyArchetype {
   id: string;

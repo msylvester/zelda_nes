@@ -1,5 +1,6 @@
 import { loadOracleSprites } from '../../../src/assets/gbc/GbcSpriteLoader';
 import { SPRITE_FRAME_MAP } from '../../../src/assets/gbc/SpriteTileMapping';
+import { ALL_ALIASES } from '../../../src/assets/gbc/SpriteAliasMap';
 
 // Helper: create a valid 8928-byte buffer (558 tiles of 16 bytes each)
 function makeValidBuffer(): ArrayBuffer {
@@ -36,6 +37,18 @@ const CHARACTER_NAMES = [
 
 const FRAME_COUNT = Object.keys(SPRITE_FRAME_MAP).length;
 
+/** Count the total gameplay alias keys generated for a set of loaded character names */
+function countAliasKeys(loadedCharacters: string[]): number {
+  let count = 0;
+  for (const alias of ALL_ALIASES) {
+    if (!loadedCharacters.includes(alias.oracleCharacter)) continue;
+    for (const frameName of Object.keys(SPRITE_FRAME_MAP)) {
+      count += alias.keyMapper(frameName).length;
+    }
+  }
+  return count;
+}
+
 beforeEach(() => {
   vi.stubGlobal('document', {
     createElement: (tag: string) => {
@@ -61,7 +74,9 @@ describe('GbcSpriteLoader', () => {
 
       const sprites = await loadOracleSprites();
 
-      expect(sprites.size).toBe(CHARACTER_NAMES.length * FRAME_COUNT);
+      const oracleCount = CHARACTER_NAMES.length * FRAME_COUNT;
+      const aliasCount = countAliasKeys(CHARACTER_NAMES);
+      expect(sprites.size).toBe(oracleCount + aliasCount);
     });
 
     it('map keys follow oracle_{charName}_{frameName} pattern', async () => {
@@ -130,12 +145,17 @@ describe('GbcSpriteLoader', () => {
       const sprites = await loadOracleSprites();
 
       // 8 characters loaded (ganondorf skipped)
-      expect(sprites.size).toBe(8 * FRAME_COUNT);
+      const loadedChars = CHARACTER_NAMES.filter(c => c !== 'ganondorf');
+      const oracleCount = loadedChars.length * FRAME_COUNT;
+      const aliasCount = countAliasKeys(loadedChars);
+      expect(sprites.size).toBe(oracleCount + aliasCount);
       expect(warnSpy).toHaveBeenCalled();
 
-      // No ganondorf keys
+      // No ganondorf oracle keys
       for (const key of sprites.keys()) {
-        expect(key).not.toContain('ganondorf');
+        if (key.startsWith('oracle_')) {
+          expect(key).not.toContain('ganondorf');
+        }
       }
     });
 
@@ -156,11 +176,17 @@ describe('GbcSpriteLoader', () => {
 
       const sprites = await loadOracleSprites();
 
-      expect(sprites.size).toBe(8 * FRAME_COUNT);
+      const loadedChars = CHARACTER_NAMES.filter(c => c !== 'marin');
+      const oracleCount = loadedChars.length * FRAME_COUNT;
+      const aliasCount = countAliasKeys(loadedChars);
+      expect(sprites.size).toBe(oracleCount + aliasCount);
       expect(warnSpy).toHaveBeenCalled();
 
+      // No marin oracle keys
       for (const key of sprites.keys()) {
-        expect(key).not.toContain('marin');
+        if (key.startsWith('oracle_')) {
+          expect(key).not.toContain('marin');
+        }
       }
     });
 

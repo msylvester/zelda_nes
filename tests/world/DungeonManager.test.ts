@@ -245,7 +245,7 @@ describe('DungeonManager', () => {
     it('should get entrance spawn position', () => {
       const pos = dungeonManager.getEntranceSpawnPosition();
       expect(pos.x).toBe(120);
-      expect(pos.y).toBe(128);
+      expect(pos.y).toBe(112);
     });
   });
 

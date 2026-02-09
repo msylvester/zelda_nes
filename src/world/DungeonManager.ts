@@ -739,8 +739,8 @@ export class DungeonManager {
    * Get spawn position for dungeon entrance
    */
   getEntranceSpawnPosition(): { x: number; y: number } {
-    // Spawn near the stairs at bottom center
-    return { x: 120, y: 128 };
+    // Spawn above the stairs so the player doesn't immediately trigger the exit
+    return { x: 120, y: 112 };
   }
 
   /**
@@ -787,7 +787,9 @@ export class DungeonManager {
     const centerX = playerHitbox.x + playerHitbox.width / 2;
     const centerY = playerHitbox.y + playerHitbox.height / 2;
 
-    const doorThreshold = TILE_SIZE; // How close player needs to be
+    // Threshold must account for the player being blocked by the solid door tile.
+    // Player hitbox stops at the door tile edge (y=16 for UP), so center is at ~20.
+    const doorThreshold = TILE_SIZE * 2; // 32px from edge
 
     // Check each direction
     if (centerY < doorThreshold && this.isDoorLocked('UP')) {
