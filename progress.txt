@@ -1,0 +1,99 @@
+# Ralph Progress Log
+Started: Sat Feb  7 19:04:52 CST 2026
+---
+
+## Codebase Patterns
+- Use `createCanvasWithContext(width, height)` pattern from AssetGenerator.ts for creating canvas elements
+- Asset sprites stored in `Map<string, HTMLCanvasElement>` via GeneratedAssets interface (widened from Map<SpriteKey,...> in SPRITE-006)
+- Barrel exports in `src/assets/index.ts` - extend when adding new modules
+- GBC module has its own barrel at `src/assets/gbc/index.ts` - import from `./gbc` not individual files
+- Quality checks: `npm run typecheck`, `npm run lint`, `npm run test`
+- Test files go in `tests/` directory mirroring `src/` structure
+- Vitest configured with `globals: true` - no need to import describe/it/expect
+- ESLint configured to lint `src/` directory only
+- Mock DOM/canvas in tests using `vi.stubGlobal('document', ...)` and `vi.unstubAllGlobals()` in afterEach
+- Mock `fetch` in tests using `vi.stubGlobal('fetch', vi.fn()...)` — cleaned up by `vi.unstubAllGlobals()`
+- GBC sprite loader uses Promise.allSettled for graceful per-character error handling
+
+## SPRITE-001 - Copy .bin files
+- Pre-existing: 9 .bin files already present in public/sprites/oracles/
+- LICENSE file present
+- passes: true (pre-populated)
+---
+
+## 2026-02-07 19:12 CST - SPRITE-002
+- What was implemented: GBC 2bpp tile parser
+- Files created:
+  - src/assets/gbc/GbcTileParser.ts - decodeTile() and parseTileBuffer() functions
+  - tests/assets/gbc/GbcTileParser.test.ts - 14 tests for tile parsing
+- **Learnings for future iterations:**
+  - GBC 2bpp format: each tile is 16 bytes, 8 rows of 2 bytes. Bit (7-N) of byte0 = low bit, byte1 = high bit for pixel N
+  - Color indices: 0x00/0x00 → 0, 0xFF/0x00 → 1, 0x00/0xFF → 2, 0xFF/0xFF → 3
+  - 8928 bytes / 16 bytes per tile = 558 tiles per character sprite sheet
+  - TypeScript strict mode requires `as number` after array access on Uint8Array
+---
+
+## 2026-02-07 19:18 CST - SPRITE-003
+- What was implemented: Color palette system with RGBA types, 3 palette presets, and renderTileToCanvas
+- Files created:
+  - src/assets/gbc/GbcPalette.ts - GbcPalette/RGBA types, DEFAULT/RED/BLUE palettes, renderTileToCanvas()
+  - tests/assets/gbc/GbcPalette.test.ts - 13 tests for palette definitions and canvas rendering
+- **Learnings for future iterations:**
+  - Vitest runs in Node (no jsdom/happy-dom), so canvas/document must be mocked via `vi.stubGlobal('document', ...)`
+  - Use `vi.stubGlobal` / `vi.unstubAllGlobals` pattern for DOM mocking in tests
+  - Canvas rendering uses `ctx.createImageData` + `ctx.putImageData` for pixel-level control (more efficient than fillRect per-pixel)
+  - GBC palette index 0 is always transparent (alpha=0), indices 1-3 are opaque (alpha=255)
+  - `noUncheckedIndexedAccess` requires `as RGBA` cast when accessing palette tuple by computed index
+---
+
+## 2026-02-07 19:21 CST - SPRITE-004
+- What was implemented: Sprite frame composer and tile mapping
+- Files created:
+  - src/assets/gbc/SpriteFrameComposer.ts - composeFrame() assembles 4 tiles in 2x2 grid into 16x16 canvas
+  - src/assets/gbc/SpriteTileMapping.ts - SPRITE_FRAME_MAP with 8 walk animation frames (4 directions x 2 frames)
+  - tests/assets/gbc/SpriteFrameComposer.test.ts - 13 tests for frame composition and tile mapping
+- **Learnings for future iterations:**
+  - composeFrame uses imageData approach (same as renderTileToCanvas) for pixel-level control on a 16x16 canvas
+  - Tile arrangement: [topLeft, topRight, bottomLeft, bottomRight] in 2x2 grid
+  - SPRITE_FRAME_MAP maps frame names to 4 tile indices; walk frames use sequential tile indices starting from 0
+  - Tests verify quadrant placement by checking specific pixel offsets: (py * 16 + px) * 4 for RGBA offset
+---
+
+## 2026-02-07 19:28 CST - SPRITE-005
+- What was implemented: Async sprite sheet loader that fetches .bin files, parses tiles, composes frames, and returns a Map of named canvases
+- Files created:
+  - src/assets/gbc/GbcSpriteLoader.ts - loadOracleSprites() async function using Promise.allSettled for parallel loading
+  - tests/assets/gbc/GbcSpriteLoader.test.ts - 7 tests for loading, key format, error handling
+- **Learnings for future iterations:**
+  - Use Promise.allSettled (not Promise.all) for graceful handling of individual fetch failures
+  - Map keys follow pattern: oracle_{charName}_{frameName} (e.g. oracle_ganondorf_walk_down_1)
+  - Mock `fetch` in tests via `vi.stubGlobal('fetch', vi.fn()...)` alongside the document mock
+  - Use `buffer.slice(0)` in mock to give each call its own ArrayBuffer copy (avoids detached buffer issues)
+  - CHARACTER_NAMES array defines the 9 characters; SPRITE_FRAME_MAP defines frames — total entries = 9 × frameCount
+---
+
+## 2026-02-07 19:32 CST - SPRITE-006
+- What was implemented: Integration of oracle sprites with the existing asset system
+- Files changed:
+  - src/assets/AssetGenerator.ts - Widened GeneratedAssets.sprites type from Map<SpriteKey,...> to Map<string,...>
+  - src/assets/index.ts - Added re-export of loadOracleSprites from gbc module
+  - src/main.ts - Added fire-and-forget loadOracleSprites() call after generateGameAssets(), merges into assets.sprites Map with console.log count
+- **Learnings for future iterations:**
+  - Widening Map<SpriteKey,...> to Map<string,...> is safe because SpriteRenderer already casts keys with `as SpriteKey`
+  - Fire-and-forget pattern: use `.then().catch()` instead of `void promise` to ensure errors are logged
+  - Capture `this.assets` into a local `const assets` before the `.then()` closure to avoid stale `this` references
+  - All 1911 existing tests continue to pass after type widening — no regressions
+---
+
+## 2026-02-07 19:35 CST - SPRITE-007
+- What was implemented: Module organization and polish — barrel exports, documentation, re-export cleanup
+- Files created:
+  - src/assets/gbc/index.ts - Barrel exports for all public APIs (GbcTileParser, GbcPalette, SpriteFrameComposer, SpriteTileMapping, GbcSpriteLoader)
+  - src/assets/gbc/CLAUDE.md - Module documentation covering GBC 2bpp format, module structure, how to add characters/frames, key patterns
+- Files changed:
+  - src/assets/index.ts - Updated loadOracleSprites re-export to use `./gbc` barrel instead of direct `./gbc/GbcSpriteLoader` import
+- **Learnings for future iterations:**
+  - When creating barrel exports, re-export types with `type` keyword for isolatedModules compatibility
+  - Update parent barrel imports to use the new sub-barrel (`./gbc`) rather than direct file paths
+  - All 1911 tests pass, typecheck and lint clean — no regressions from barrel/re-export changes
+---

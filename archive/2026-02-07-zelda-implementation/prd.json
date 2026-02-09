@@ -1,0 +1,158 @@
+{
+  "project": "GBC 2bpp Sprite Loader – Oracle of Seasons/Ages Characters",
+  "branchName": "ralph/sprite-loader",
+  "description": "Parse GBC 2bpp binary tile data from .bin sprite files and render them as HTMLCanvasElement sprites, registered in the existing asset system. Sprites are loaded and available in the map but NOT wired into gameplay.",
+  "goal": {
+    "ultimate": "Load 9 Oracle of Seasons/Ages character sprites from GBC 2bpp .bin files, compose 16x16 character frames, and register them in GeneratedAssets.sprites so they are available for rendering",
+    "constraints": [
+      "No copyrighted assets – sprites are MIT licensed from Dinopony/oracles-sprites",
+      "Sprites loaded async, must not block game boot",
+      "Do NOT wire sprites into gameplay or replace existing placeholder sprites",
+      "Must pass all existing quality checks (typecheck, lint, test)"
+    ]
+  },
+  "context": {
+    "spriteSource": "public/sprites/oracles/*.bin (9 files, 8928 bytes each, MIT license)",
+    "spriteFormat": "GBC 2bpp tile format: each tile is 16 bytes encoding an 8x8 pixel grid with 2-bit color indices (0-3). 8928 bytes / 16 bytes per tile = 558 tiles per character.",
+    "targetPlatform": "Browser (Canvas + Web Audio)",
+    "language": "TypeScript 5.x",
+    "bundler": "Vite",
+    "testFramework": "Vitest",
+    "assetSystem": "src/assets/AssetGenerator.ts – GeneratedAssets interface (line 169), SpriteKey type (line 77), createCanvasWithContext pattern (line 180)",
+    "assetBarrel": "src/assets/index.ts – barrel exports to extend",
+    "mainEntry": "src/main.ts:151 – where generateGameAssets() is called; async load goes after",
+    "spriteRenderer": "src/rendering/SpriteRenderer.ts:45 – uses assets.sprites.get(spriteKey as SpriteKey), already works with widened map type"
+  },
+  "userStories": [
+    {
+      "id": "SPRITE-001",
+      "title": "Copy .bin files to public/sprites/oracles/",
+      "description": "Ensure all 9 GBC sprite .bin files and the LICENSE file are present in public/sprites/oracles/. These are static assets served by Vite's public directory.",
+      "acceptanceCriteria": [
+        "public/sprites/oracles/ contains 9 .bin files: ganondorf.bin, goron.bin, marin.bin, matty.bin, piratian.bin, subrosian.bin, tokay.bin, vulpera.bin, zoroark.bin",
+        "Each .bin file is exactly 8928 bytes",
+        "public/sprites/oracles/LICENSE is present (MIT license from Dinopony)",
+        "Files are accessible via Vite dev server at /sprites/oracles/*.bin"
+      ],
+      "priority": 1,
+      "passes": true
+    },
+    {
+      "id": "SPRITE-002",
+      "title": "GBC 2bpp tile parser",
+      "description": "Implement a parser that decodes GBC 2bpp tile data. Each tile is 16 bytes encoding an 8x8 pixel grid. For each row (2 bytes), bit N of byte 0 is the low bit and bit N of byte 1 is the high bit of the color index (0-3) for pixel N. The parser should decode a single tile (16 bytes → Uint8Array of 64 color indices) and parse a full buffer into an array of tiles.",
+      "acceptanceCriteria": [
+        "src/assets/gbc/GbcTileParser.ts exists with decodeTile(data: Uint8Array, offset: number) → Uint8Array(64)",
+        "decodeTile correctly maps 2bpp encoding: for each row, byte0 bit N = low bit, byte1 bit N = high bit of pixel (7-N) color index",
+        "parseTileBuffer(buffer: ArrayBuffer) → Uint8Array[] returns array of 558 tiles for an 8928-byte buffer",
+        "Unit tests in tests/assets/gbc/GbcTileParser.test.ts verify known bit patterns: all-zero bytes → 64 zeros, 0xFF 0x00 → all 1s, 0x00 0xFF → all 2s, 0xFF 0xFF → all 3s",
+        "Edge case: buffer size not divisible by 16 throws descriptive error",
+        "npm run test passes"
+      ],
+      "priority": 2,
+      "passes": false
+    },
+    {
+      "id": "SPRITE-003",
+      "title": "Color palette system",
+      "description": "Implement a color palette system that maps 2-bit color indices (0-3) to RGBA values. Index 0 is always transparent. Provide a default green palette matching GBC style, plus red and blue presets. Include a renderTileToCanvas() function that takes a decoded tile (Uint8Array of 64 indices) and a palette, and renders it to an 8x8 HTMLCanvasElement.",
+      "acceptanceCriteria": [
+        "src/assets/gbc/GbcPalette.ts exports GbcPalette type as [RGBA, RGBA, RGBA, RGBA] where RGBA is [r,g,b,a]",
+        "DEFAULT_PALETTE: index 0 = transparent (alpha 0), indices 1-3 = green shades matching GBC aesthetic",
+        "RED_PALETTE and BLUE_PALETTE presets exported",
+        "renderTileToCanvas(tile: Uint8Array, palette: GbcPalette) → HTMLCanvasElement (8x8 canvas)",
+        "Index 0 pixels are fully transparent (alpha = 0)",
+        "Unit tests in tests/assets/gbc/GbcPalette.test.ts verify palette mapping and transparency",
+        "npm run test passes"
+      ],
+      "priority": 3,
+      "passes": false
+    },
+    {
+      "id": "SPRITE-004",
+      "title": "Sprite frame composer",
+      "description": "Implement a composer that assembles 4 tiles in a 2x2 grid into a 16x16 character sprite canvas. Also create a data table mapping animation frame names to tile indices within the 558-tile set. At minimum, define walk animations for 4 directions x 2 frames.",
+      "acceptanceCriteria": [
+        "src/assets/gbc/SpriteFrameComposer.ts exports composeFrame(tiles: Uint8Array[], tileIndices: [number, number, number, number], palette: GbcPalette) → HTMLCanvasElement (16x16)",
+        "Tiles are arranged: [topLeft, topRight, bottomLeft, bottomRight] in the 2x2 grid",
+        "src/assets/gbc/SpriteTileMapping.ts exports SPRITE_FRAME_MAP: Record<string, [number, number, number, number]>",
+        "Frame map includes at least: walk_down_1, walk_down_2, walk_up_1, walk_up_2, walk_left_1, walk_left_2, walk_right_1, walk_right_2",
+        "Unit tests in tests/assets/gbc/SpriteFrameComposer.test.ts verify 16x16 output dimensions and correct tile placement",
+        "npm run test passes"
+      ],
+      "priority": 4,
+      "passes": false
+    },
+    {
+      "id": "SPRITE-005",
+      "title": "Async sprite sheet loader",
+      "description": "Implement an async loader that fetches .bin files, parses tiles, composes frames, and returns a Map of named HTMLCanvasElement sprites. Load all 9 characters in parallel. Keys follow the pattern oracle_{characterName}_{frameName} (e.g. oracle_ganondorf_walk_down_1). Handle fetch errors gracefully (log warning, skip character).",
+      "acceptanceCriteria": [
+        "src/assets/gbc/GbcSpriteLoader.ts exports loadOracleSprites() → Promise<Map<string, HTMLCanvasElement>>",
+        "Fetches all 9 .bin files from /sprites/oracles/ in parallel using Promise.allSettled",
+        "For each character, composes all frames defined in SPRITE_FRAME_MAP",
+        "Map keys follow pattern: oracle_{charName}_{frameName} e.g. oracle_ganondorf_walk_down_1",
+        "If a fetch fails, logs a console.warn and continues loading other characters",
+        "Returns a Map with (9 characters × number of frames) entries on success",
+        "Unit tests in tests/assets/gbc/GbcSpriteLoader.test.ts mock fetch and verify map key format and canvas dimensions",
+        "npm run test passes"
+      ],
+      "priority": 5,
+      "passes": false
+    },
+    {
+      "id": "SPRITE-006",
+      "title": "Integration with asset system",
+      "description": "Widen the GeneratedAssets.sprites type from Map<SpriteKey, HTMLCanvasElement> to Map<string, HTMLCanvasElement> so oracle sprites can coexist with procedural placeholders. Add a loadOracleSprites() call in main.ts that runs after generateGameAssets(), fire-and-forget (no await blocking boot). Merge loaded sprites into the existing assets.sprites map. Log the count of loaded sprites to console.",
+      "acceptanceCriteria": [
+        "GeneratedAssets.sprites type changed from Map<SpriteKey, HTMLCanvasElement> to Map<string, HTMLCanvasElement> in AssetGenerator.ts",
+        "All existing code that uses SpriteKey continues to compile (SpriteKey values are strings, Map<string,...> accepts them)",
+        "src/assets/index.ts exports a loadOracleSprites() function (or re-exports from gbc module)",
+        "main.ts calls loadOracleSprites() after generateGameAssets() in a fire-and-forget pattern (no await blocking init)",
+        "Loaded oracle sprites are merged into the existing assets.sprites Map",
+        "Console.log confirms sprite loading count (e.g. 'Loaded 72 oracle sprites')",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test passes",
+        "Game boots normally without blocking on sprite load"
+      ],
+      "priority": 6,
+      "passes": false
+    },
+    {
+      "id": "SPRITE-007",
+      "title": "Module organization and polish",
+      "description": "Create barrel exports, add CLAUDE.md documentation for the gbc module, and ensure all quality checks pass cleanly.",
+      "acceptanceCriteria": [
+        "src/assets/gbc/index.ts barrel-exports all public APIs: GbcTileParser functions, GbcPalette types/constants, SpriteFrameComposer, SpriteTileMapping, GbcSpriteLoader",
+        "src/assets/index.ts re-exports from './gbc' (at minimum loadOracleSprites)",
+        "src/assets/gbc/CLAUDE.md documents the module: GBC 2bpp format, tile layout, palette system, how to add new characters",
+        "npm run typecheck passes with zero errors",
+        "npm run lint passes with zero errors",
+        "npm run test passes with all tests green",
+        "No regressions in existing game functionality"
+      ],
+      "priority": 7,
+      "passes": false
+    }
+  ],
+  "outOfScope": [
+    "Wiring oracle sprites into actual gameplay (player, enemies, NPCs)",
+    "Replacing existing placeholder sprites",
+    "Animation system integration (frame cycling)",
+    "Sprite palette swapping at runtime",
+    "Full 558-tile sheet rendering (only compose specific animation frames)",
+    "Sprite editor or preview tool",
+    "Non-oracle character sprites"
+  ],
+  "definitionOfDone": [
+    "All 9 .bin files are in public/sprites/oracles/",
+    "GBC 2bpp parser correctly decodes tile data with unit tests",
+    "Color palette maps indices to RGBA with transparency on index 0",
+    "16x16 character frames composed from 2x2 tile grids",
+    "Async loader fetches and parses all 9 characters in parallel",
+    "Oracle sprites are registered in GeneratedAssets.sprites map",
+    "Game boots normally with oracle sprites loading in background",
+    "All quality checks pass (typecheck, lint, test)"
+  ]
+}

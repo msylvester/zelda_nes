@@ -1,0 +1,627 @@
+{
+  "project": "Legend of Zelda (NES) – TypeScript Implementation",
+  "branchName": "ralph/zelda-implementation",
+  "description": "Implement the Zelda NES clone from the completed specifications in specs/final-one-shot-prd.md",
+  "goal": {
+    "ultimate": "A playable browser-based Zelda NES clone that boots, renders the overworld, allows combat, and supports completing Dungeon 1",
+    "constraints": [
+      "Local execution only (no server)",
+      "TypeScript strict mode",
+      "No copyrighted assets (procedurally generated or placeholder)",
+      "Browser Canvas + Web Audio only (no game engines)",
+      "NES-faithful mechanics"
+    ]
+  },
+  "context": {
+    "specFile": "specs/final-one-shot-prd.md",
+    "targetPlatform": "Browser (Canvas + Web Audio)",
+    "language": "TypeScript 5.x",
+    "bundler": "Vite",
+    "testFramework": "Vitest"
+  },
+  "userStories": [
+    {
+      "id": "IMPL-001",
+      "title": "Project scaffolding and build pipeline",
+      "description": "Set up the TypeScript project structure with Vite, ESLint, and all config files as specified in spec section 2-3.",
+      "acceptanceCriteria": [
+        "package.json with all dependencies from spec (vite, typescript, vitest, eslint)",
+        "tsconfig.json with strict mode and settings from spec",
+        "vite.config.ts configured per spec",
+        "eslint.config.js for code quality",
+        "index.html with canvas element and styling from spec",
+        "Directory structure created: src/{core,input,world,entities,combat,rendering,animation,audio,inventory,progression,screens,data,assets,utils}",
+        "Empty placeholder files for main.ts, constants.ts, types.ts",
+        "npm install succeeds, npm run dev starts without error"
+      ],
+      "priority": 1,
+      "passes": true
+    },
+    {
+      "id": "IMPL-002",
+      "title": "Constants and shared types",
+      "description": "Define all game constants and TypeScript types/interfaces as specified in spec section 6 (Data Schemas).",
+      "acceptanceCriteria": [
+        "src/constants.ts with NES dimensions (256x240, 256x176 play area), frame timing (60 FPS), movement speeds",
+        "src/types.ts with all interfaces: Direction, AABB, GamePhase, TileCollision, ButtonState, InputSnapshot, Entity, etc.",
+        "All types match spec section 6 schemas exactly",
+        "Types compile without errors"
+      ],
+      "priority": 2,
+      "passes": true
+    },
+    {
+      "id": "IMPL-003",
+      "title": "Utility functions",
+      "description": "Implement utility functions in src/utils/ as specified.",
+      "acceptanceCriteria": [
+        "src/utils/math.ts with clamp, lerp, aabbOverlap functions",
+        "src/utils/PRNG.ts with deterministic seeded random number generator",
+        "src/utils/debug.ts with optional debug overlay/logging",
+        "All utilities have basic unit tests"
+      ],
+      "priority": 3,
+      "passes": true
+    },
+    {
+      "id": "IMPL-004",
+      "title": "Input system",
+      "description": "Implement the input system per spec section 5.3 with keyboard polling, direction stack, and input mapping.",
+      "acceptanceCriteria": [
+        "src/input/InputMapping.ts with NES button mapping (Arrow keys, Z=A, X=B, Enter=Start, Shift=Select)",
+        "src/input/DirectionStack.ts with push/remove/current/clear methods for direction priority",
+        "src/input/InputSystem.ts with poll() returning frozen InputSnapshot",
+        "Handles keydown/keyup events, prevents browser defaults for mapped keys",
+        "Handles window blur (clears input state)",
+        "Direction priority: most recently pressed wins",
+        "Unit tests for direction stack and button state transitions"
+      ],
+      "priority": 4,
+      "passes": true
+    },
+    {
+      "id": "IMPL-005",
+      "title": "Core game loop and state manager",
+      "description": "Implement the fixed-timestep game loop and game state manager per spec sections 4 and 5.2/5.4.",
+      "acceptanceCriteria": [
+        "src/core/GameStateManager.ts with GamePhase enum and phase transitions",
+        "src/core/EventBus.ts with simple pub/sub for game events",
+        "src/core/GameLoop.ts with 60 FPS fixed timestep, max 3 frame skip",
+        "Game loop delegates to phase-specific update logic",
+        "Frame counter increments exactly once per logical tick",
+        "Pause toggle with Start button works"
+      ],
+      "priority": 5,
+      "passes": true
+    },
+    {
+      "id": "IMPL-006",
+      "title": "Asset generator (placeholder graphics)",
+      "description": "Implement procedural asset generation for placeholder tileset and sprites.",
+      "acceptanceCriteria": [
+        "src/assets/AssetGenerator.ts that generates placeholder ImageBitmap/Canvas assets",
+        "Generates colored rectangle placeholders for: Link (green), enemies (red variants), tiles (brown/green/blue)",
+        "Generates simple HUD elements (heart shapes, minimap rectangles)",
+        "Assets accessible via a GameAssets interface",
+        "No external image files required"
+      ],
+      "priority": 6,
+      "passes": true
+    },
+    {
+      "id": "IMPL-007",
+      "title": "Basic rendering system",
+      "description": "Implement the core rendering pipeline per spec section 5.11.",
+      "acceptanceCriteria": [
+        "src/rendering/Renderer.ts orchestrates render pipeline",
+        "src/rendering/TileRenderer.ts renders background tiles with 64px HUD offset",
+        "src/rendering/SpriteRenderer.ts renders sprites sorted by priority",
+        "src/rendering/EffectRenderer.ts for screen flash/fade (can be stub initially)",
+        "Canvas renders at 256x240 with 3x scale and pixelated rendering",
+        "Clears to black each frame"
+      ],
+      "priority": 7,
+      "passes": true
+    },
+    {
+      "id": "IMPL-008",
+      "title": "World and tilemap system",
+      "description": "Implement world management and tilemap per spec section 5.5.",
+      "acceptanceCriteria": [
+        "src/world/TileMap.ts with load(), getTileAt(), getCollisionAt() methods",
+        "src/world/WorldManager.ts with loadScreen(), checkScreenTransition(), isTileSolid()",
+        "Tile collision types: SOLID, PASSABLE, WATER, PIT, STAIRS, BUSH, ROCK",
+        "Screen dimensions: 16x11 tiles, 256x176 pixels",
+        "Can load a hardcoded test screen with mixed collision types"
+      ],
+      "priority": 8,
+      "passes": true
+    },
+    {
+      "id": "IMPL-009",
+      "title": "Screen data (overworld stub)",
+      "description": "Create stub overworld data with starting screen and a few adjacent screens.",
+      "acceptanceCriteria": [
+        "src/data/overworldData.ts with 16x8 grid structure (128 screen slots)",
+        "Starting screen (7,7) fully defined with walkable areas and some obstacles",
+        "4-8 adjacent screens with basic tile layouts",
+        "Screen data includes tile IDs and collision types",
+        "Remaining screens stubbed as empty/blocked"
+      ],
+      "priority": 9,
+      "passes": true
+    },
+    {
+      "id": "IMPL-010",
+      "title": "Entity system base",
+      "description": "Implement base entity interface and entity manager per spec section 5.6.",
+      "acceptanceCriteria": [
+        "src/entities/Entity.ts with Entity interface (id, x, y, width, height, active, etc.)",
+        "src/entities/EntityManager.ts with spawn/update/clear methods for enemies, projectiles, items",
+        "Entity lifecycle management (active flag, removal on despawn)",
+        "getSpriteCommands() for rendering integration",
+        "getActiveEnemyCount() for room clear detection"
+      ],
+      "priority": 10,
+      "passes": true
+    },
+    {
+      "id": "IMPL-011",
+      "title": "Player (Link) implementation",
+      "description": "Implement the player entity per spec section 5.7 and core-game-systems.md.",
+      "acceptanceCriteria": [
+        "src/entities/Player.ts with state machine (IDLE, WALKING, ATTACKING, KNOCKBACK, INVINCIBLE, DYING)",
+        "Sub-pixel movement at 1.5 pixels/frame with 8-pixel grid snap on perpendicular axis",
+        "Collision box is 8x8 at feet (bottom center of 16x16 sprite)",
+        "Facing direction updates when moving",
+        "Movement blocked by solid tiles",
+        "Player renders on screen and responds to input"
+      ],
+      "priority": 11,
+      "passes": true
+    },
+    {
+      "id": "IMPL-012",
+      "title": "Player combat (sword attack)",
+      "description": "Implement sword attack for the player.",
+      "acceptanceCriteria": [
+        "A button triggers sword attack (ATTACKING state)",
+        "Sword hitbox: 16x8 (horizontal) or 8x16 (vertical) adjacent to Link",
+        "Attack animation duration ~12 frames, hitbox active frames 2-8",
+        "Cannot move during attack",
+        "Sword hitbox accessible via getSwordHitbox()"
+      ],
+      "priority": 12,
+      "passes": true
+    },
+    {
+      "id": "IMPL-013",
+      "title": "Collision detection system",
+      "description": "Implement collision detection per spec section 5.10.",
+      "acceptanceCriteria": [
+        "src/combat/CollisionDetection.ts with AABB overlap checks",
+        "checkPlayerEnemyCollisions() queues damage events on contact",
+        "checkPlayerWeaponEnemyCollisions() detects sword hitting enemies",
+        "checkPlayerItemCollisions() for item pickup",
+        "aabbOverlap utility function tested"
+      ],
+      "priority": 13,
+      "passes": true
+    },
+    {
+      "id": "IMPL-014",
+      "title": "Damage system",
+      "description": "Implement damage calculation and application per spec section 5.9.",
+      "acceptanceCriteria": [
+        "src/combat/DamageSystem.ts with queueDamage() and processQueue()",
+        "Player damage reduces HP, triggers knockback and invincibility",
+        "Enemy damage reduces HP, triggers knockback (if knockbackable), death at 0 HP",
+        "Invincibility frames prevent repeat damage",
+        "Knockback direction is opposite of damage source"
+      ],
+      "priority": 14,
+      "passes": true
+    },
+    {
+      "id": "IMPL-015",
+      "title": "Player knockback and invincibility",
+      "description": "Implement player knockback and invincibility frames.",
+      "acceptanceCriteria": [
+        "Knockback: 16 pixels over 16 frames in opposite direction",
+        "During knockback: invulnerable, cannot act",
+        "After knockback: 60 frames of invincibility with sprite flashing (toggle every 4 frames)",
+        "takeDamage() respects invincibility"
+      ],
+      "priority": 15,
+      "passes": true
+    },
+    {
+      "id": "IMPL-016",
+      "title": "Enemy archetypes data",
+      "description": "Define enemy archetype data per spec section 5.8 and enemy-and-ai-behavior.md.",
+      "acceptanceCriteria": [
+        "src/data/enemyArchetypes.ts with EnemyArchetype interface",
+        "At least 5 enemy types defined: Octorok (red/blue), Tektite, Moblin, Keese",
+        "Each archetype has: hp, contactDamage, movementPattern, hitbox, vulnerabilities",
+        "Movement pattern types: RANDOM_WALK, HOP, FLY"
+      ],
+      "priority": 16,
+      "passes": true
+    },
+    {
+      "id": "IMPL-017",
+      "title": "Enemy entity implementation",
+      "description": "Implement enemy entity with basic AI per spec section 5.8.",
+      "acceptanceCriteria": [
+        "src/entities/Enemy.ts with state machine (SPAWNING, ACTIVE, STUNNED, KNOCKBACK, DYING)",
+        "Enemy loads behavior from archetype",
+        "Basic RANDOM_WALK movement: random direction changes, pause between moves",
+        "Enemies spawn, move around, and can be killed",
+        "Death animation (puff) on HP reaching 0"
+      ],
+      "priority": 17,
+      "passes": true
+    },
+    {
+      "id": "IMPL-018",
+      "title": "Screen transitions",
+      "description": "Implement screen transitions per spec section 5.5.",
+      "acceptanceCriteria": [
+        "src/world/ScreenTransition.ts with scroll transition logic",
+        "Walking off screen edge triggers TRANSITION phase",
+        "Horizontal scroll: 64 frames at 4px/frame",
+        "Vertical scroll: 44 frames at 4px/frame",
+        "Gameplay pauses during transition",
+        "After transition: load new screen, spawn enemies, position player at opposite edge"
+      ],
+      "priority": 18,
+      "passes": true
+    },
+    {
+      "id": "IMPL-019",
+      "title": "Animation system",
+      "description": "Implement animation system per spec section 5.12.",
+      "acceptanceCriteria": [
+        "src/animation/AnimationSystem.ts with playback and frame advancement",
+        "src/animation/AnimationData.ts with animation definitions",
+        "Link walk cycle (2 frames, 8 frames per frame)",
+        "Link attack animation",
+        "Enemy animations (at least walk/idle)",
+        "Animation system integrated with sprite rendering"
+      ],
+      "priority": 19,
+      "passes": true
+    },
+    {
+      "id": "IMPL-020",
+      "title": "HUD renderer",
+      "description": "Implement HUD rendering per spec section 5.13.",
+      "acceptanceCriteria": [
+        "src/rendering/HudRenderer.ts renders in top 64 pixels",
+        "Heart display (current/max HP as heart icons)",
+        "Rupee counter display",
+        "Key counter display",
+        "Bomb counter display",
+        "B-item slot (empty initially)",
+        "Minimap area (can be simple rectangle initially)"
+      ],
+      "priority": 20,
+      "passes": true
+    },
+    {
+      "id": "IMPL-021",
+      "title": "Inventory manager",
+      "description": "Implement inventory system per spec section 5.16.",
+      "acceptanceCriteria": [
+        "src/inventory/InventoryManager.ts with Inventory interface from spec",
+        "Track: swordTier, rupees, keys, bombs, heartContainers, currentHP",
+        "Methods: addRupees(), addKey(), useKey(), addBomb(), useBomb()",
+        "Inventory persists during gameplay session"
+      ],
+      "priority": 21,
+      "passes": true
+    },
+    {
+      "id": "IMPL-022",
+      "title": "Item drops",
+      "description": "Implement item drop entities and collection.",
+      "acceptanceCriteria": [
+        "src/entities/ItemDrop.ts for dropped items (hearts, rupees, bombs, keys)",
+        "Items spawn when enemies die (based on drop table)",
+        "Items bob up and down (simple animation)",
+        "Items despawn after ~10 seconds",
+        "Collecting items updates inventory",
+        "Heart drops restore HP"
+      ],
+      "priority": 22,
+      "passes": true
+    },
+    {
+      "id": "IMPL-023",
+      "title": "Audio system (basic)",
+      "description": "Implement basic audio system per spec section 5.15.",
+      "acceptanceCriteria": [
+        "src/audio/AudioManager.ts with playSfx() and playMusic() methods",
+        "src/audio/AudioContext.ts for Web Audio API bootstrap",
+        "src/audio/ToneGenerator.ts for basic pulse/square wave synthesis",
+        "At least 3 sound effects: sword swing, enemy hit, enemy death",
+        "Mute/unmute capability",
+        "Audio starts on first user interaction (browser requirement)"
+      ],
+      "priority": 23,
+      "passes": true
+    },
+    {
+      "id": "IMPL-024",
+      "title": "Title screen",
+      "description": "Implement title screen per spec section 5.19.",
+      "acceptanceCriteria": [
+        "src/screens/TitleScreen.ts with update() and render() methods",
+        "Displays game title text",
+        "Press Start to begin",
+        "Start button transitions to FILE_SELECT or directly to GAMEPLAY"
+      ],
+      "priority": 24,
+      "passes": true
+    },
+    {
+      "id": "IMPL-025",
+      "title": "Bootstrap and main entry",
+      "description": "Implement main.ts bootstrap per spec section 5.1.",
+      "acceptanceCriteria": [
+        "src/main.ts initializes all systems in correct order",
+        "Canvas setup: 256x240 native, 3x scale, pixelated rendering",
+        "Systems wired together (input, audio, renderer, gameState, world, entities, collision, damage)",
+        "Game starts on TITLE phase",
+        "Game loop starts on DOMContentLoaded",
+        "Game runs and displays title screen"
+      ],
+      "priority": 25,
+      "passes": true
+    },
+    {
+      "id": "IMPL-026",
+      "title": "Gameplay integration (playable demo)",
+      "description": "Integrate all systems for a playable demo.",
+      "acceptanceCriteria": [
+        "Can start game from title screen",
+        "Link spawns on starting screen (7,7)",
+        "Can move Link in 4 directions with collision",
+        "Can attack with sword",
+        "Enemies spawn and move",
+        "Can damage and kill enemies",
+        "Enemies can damage Link",
+        "HUD displays correctly",
+        "Can transition between screens"
+      ],
+      "priority": 26,
+      "passes": true
+    },
+    {
+      "id": "IMPL-027",
+      "title": "Pause screen",
+      "description": "Implement pause/inventory screen per spec section 5.19.",
+      "acceptanceCriteria": [
+        "src/screens/PauseScreen.ts with update() and render()",
+        "Start button toggles pause during GAMEPLAY",
+        "Pause screen overlays gameplay",
+        "Shows inventory items",
+        "Shows full map (or placeholder)",
+        "Pressing Start returns to GAMEPLAY"
+      ],
+      "priority": 27,
+      "passes": true
+    },
+    {
+      "id": "IMPL-028",
+      "title": "Player death and continue",
+      "description": "Implement death sequence and continue screen.",
+      "acceptanceCriteria": [
+        "When HP reaches 0, enter DEATH phase",
+        "Death animation plays (~80 frames)",
+        "Transition to CONTINUE_SCREEN",
+        "src/screens/ContinueScreen.ts with Continue/Save&Quit options",
+        "Continue respawns Link at screen start with 3 hearts"
+      ],
+      "priority": 28,
+      "passes": true
+    },
+    {
+      "id": "IMPL-029",
+      "title": "Save/Load system",
+      "description": "Implement save system per spec section 5.17.",
+      "acceptanceCriteria": [
+        "src/progression/SaveSystem.ts with localStorage persistence",
+        "Save state includes: inventory, heartContainers, progression flags",
+        "Save on game over / quit",
+        "Load on continue / game start",
+        "3 save slots supported",
+        "Save data validation on load"
+      ],
+      "priority": 29,
+      "passes": true
+    },
+    {
+      "id": "IMPL-030",
+      "title": "File select screen",
+      "description": "Implement file select screen.",
+      "acceptanceCriteria": [
+        "src/screens/FileSelectScreen.ts",
+        "Display 3 save slots with name/hearts/deaths",
+        "Register new file (name entry)",
+        "Select existing file to continue",
+        "Eliminate file option",
+        "Integrates with SaveSystem"
+      ],
+      "priority": 30,
+      "passes": true
+    },
+    {
+      "id": "IMPL-031",
+      "title": "Dungeon 1 data",
+      "description": "Create Dungeon 1 room data.",
+      "acceptanceCriteria": [
+        "src/data/dungeonData.ts with dungeon structure",
+        "Dungeon 1: 8x8 room grid (most rooms stubbed)",
+        "At least 6 rooms fully defined with tiles and enemies",
+        "Entrance room, 2-3 combat rooms, key room, boss room",
+        "Room connections (doors) defined",
+        "Different tileset palette from overworld"
+      ],
+      "priority": 31,
+      "passes": true
+    },
+    {
+      "id": "IMPL-032",
+      "title": "Dungeon navigation",
+      "description": "Implement dungeon-specific navigation.",
+      "acceptanceCriteria": [
+        "Dungeon entry from overworld (stair tile triggers fade transition)",
+        "Dungeon uses column wipe transitions (not scroll)",
+        "Locked doors require keys",
+        "Shutter doors open when all enemies defeated",
+        "Can navigate between dungeon rooms"
+      ],
+      "priority": 32,
+      "passes": true
+    },
+    {
+      "id": "IMPL-033",
+      "title": "Dungeon items (map, compass, key)",
+      "description": "Implement dungeon pickup items.",
+      "acceptanceCriteria": [
+        "Dungeon map reveals room layout on pause screen",
+        "Compass marks Triforce location",
+        "Keys can be collected and used on locked doors",
+        "Item pickup animation/sequence",
+        "Items tracked per-dungeon in progression"
+      ],
+      "priority": 33,
+      "passes": true
+    },
+    {
+      "id": "IMPL-034",
+      "title": "Dungeon 1 boss (Aquamentus)",
+      "description": "Implement first dungeon boss.",
+      "acceptanceCriteria": [
+        "Aquamentus enemy archetype: dragon that shoots fireballs",
+        "Movement: slow horizontal drift",
+        "Attack: 3 fireballs in spread pattern",
+        "HP: high (e.g., 6 sword hits)",
+        "Drops Triforce piece on death",
+        "Boss room locks doors until defeated"
+      ],
+      "priority": 34,
+      "passes": true
+    },
+    {
+      "id": "IMPL-035",
+      "title": "Triforce collection",
+      "description": "Implement Triforce piece collection and progression.",
+      "acceptanceCriteria": [
+        "src/progression/ProgressionManager.ts tracks Triforce pieces",
+        "Collecting Triforce triggers ITEM_PICKUP phase",
+        "Triforce animation/fanfare",
+        "Triforce count shown on pause screen",
+        "Dungeon marked complete after Triforce collected"
+      ],
+      "priority": 35,
+      "passes": true
+    },
+    {
+      "id": "IMPL-036",
+      "title": "Sword beam projectile",
+      "description": "Implement sword beam when at full health.",
+      "acceptanceCriteria": [
+        "src/entities/Projectile.ts for projectile entities",
+        "At full HP, sword swing also fires beam projectile",
+        "Beam travels in facing direction at 3px/frame",
+        "Beam has same hitbox as melee sword",
+        "Only one beam can exist at a time",
+        "Beam despawns on enemy hit, solid tile, or screen edge"
+      ],
+      "priority": 36,
+      "passes": true
+    },
+    {
+      "id": "IMPL-037",
+      "title": "B-button item system (boomerang)",
+      "description": "Implement B-button item usage starting with boomerang.",
+      "acceptanceCriteria": [
+        "src/inventory/ItemEffects.ts with per-item use logic",
+        "B button uses currently equipped item",
+        "Boomerang: travels 5 tiles forward then returns",
+        "Boomerang stuns enemies for 60 frames",
+        "Only one boomerang active at a time",
+        "Can collect boomerang from chest/enemy drop"
+      ],
+      "priority": 37,
+      "passes": true
+    },
+    {
+      "id": "IMPL-038",
+      "title": "Additional B-items (bombs, candle)",
+      "description": "Implement bombs and candle items.",
+      "acceptanceCriteria": [
+        "Bombs: place at Link's position, explode after 60 frames, 8px blast radius, 4 damage",
+        "Bomb counter decrements on use, max 8 carried",
+        "Candle: fire flame projectile, travels 4 tiles, burns bushes",
+        "Blue candle: once per screen only",
+        "Item switching on pause screen"
+      ],
+      "priority": 38,
+      "passes": true
+    },
+    {
+      "id": "IMPL-039",
+      "title": "Cave rooms and NPCs",
+      "description": "Implement cave system with shops and NPCs.",
+      "acceptanceCriteria": [
+        "src/data/caveData.ts with cave room definitions",
+        "Cave entries on overworld (dark doorways)",
+        "Cave interiors: single-screen rooms",
+        "NPC text display (IT'S DANGEROUS TO GO ALONE)",
+        "Old man gives sword in starting cave",
+        "Shop caves with item prices"
+      ],
+      "priority": 39,
+      "passes": true
+    },
+    {
+      "id": "IMPL-040",
+      "title": "Polish and bug fixes",
+      "description": "Final polish pass and bug fixes.",
+      "acceptanceCriteria": [
+        "All gameplay systems integrated and working",
+        "No TypeScript errors (npm run typecheck passes)",
+        "No ESLint errors (npm run lint passes)",
+        "Basic test suite passes (npm run test)",
+        "Game boots to title, can play through overworld and Dungeon 1",
+        "Can collect Triforce and see completion message"
+      ],
+      "priority": 40,
+      "passes": true
+    }
+  ],
+  "outOfScope": [
+    "Full 128-screen overworld (only ~10 screens implemented)",
+    "All 9 dungeons (only Dungeon 1 complete)",
+    "All enemy types (subset implemented)",
+    "All items (subset implemented)",
+    "Second Quest",
+    "Full music composition (basic audio only)",
+    "Multiplayer",
+    "Mobile/touch controls"
+  ],
+  "definitionOfDone": [
+    "Game boots and displays title screen",
+    "Can start new game or continue saved game",
+    "Can explore overworld with screen transitions",
+    "Can fight enemies and collect drops",
+    "Can enter and navigate Dungeon 1",
+    "Can defeat Aquamentus boss",
+    "Can collect Triforce piece",
+    "All code passes typecheck and lint",
+    "Basic test coverage exists"
+  ]
+}
